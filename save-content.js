@@ -1,0 +1,32 @@
+// POST { content }  (admin only)  -> saves the whole CMS data in Redis
+const L = require("./_lib");
+
+module.exports = async (req, res) => {
+  if (req.method !== "POST") return L.send(res, 405, { error: "Method not allowed" });
+  if (!L.isAdmin(req)) return L.send(res, 401, { error: "Please log in again." });
+  try {
+    const { content } = L.body(req);
+    if (!content || typeof content !== "object") return L.send(res, 400, { error: "No content received." });
+
+    const clean = {};
+    for (const k of L.SEGMENTS) {
+      const list = content[k];
+      if (!Array.isArray(list) || list.length > 500) return L.send(res, 400, { error: "Invalid data in: " + k });
+      clean[k] = list.filter(x => x && typeof x === "object" && !Array.isArray(x));
+    }
+    const json = JSON.stringify(clean);
+    if (json.length > 1500000) return L.send(res, 413, { error: "Content is too large." });
+
+    await L.redis().set(L.CONTENT_KEY, clean);
+
+    // Visitor feedback that now exists in the saved content is no longer "waiting".
+    const known = new Set(clean.feedback.map(f => f.id));
+    const waiting = (await L.redis().lrange(L.PENDING_KEY, 0, 199)) || [];
+    const still = waiting.filter(f => f && !known.has(f.id));
+    if (still.length !== waiting.length) {
+      await L.redis().del(L.PENDING_KEY);
+      if (still.length) await L.redis().rpush(L.PENDING_KEY, ...still);
+    }
+    return L.send(res, 200, { ok: true });
+  } catch (e) { L.fail(res, e); }
+};
