@@ -82,6 +82,7 @@ td .cl{max-width:380px;overflow:hidden;text-overflow:ellipsis;display:-webkit-bo
     <h2>PaperBack<small>Website dashboard</small></h2>
     <div class="nav" id="nav"></div>
     <div class="side-tools">
+      <button class="btn" id="dl">⬇ Download site-content.js</button>
       <button class="btn" id="ex">Export JSON backup</button>
       <button class="btn" id="im">Import JSON</button>
       <button class="btn" id="rs">Reset to defaults</button>
@@ -101,8 +102,8 @@ td .cl{max-width:380px;overflow:hidden;text-overflow:ellipsis;display:-webkit-bo
 <div id="toast" hidden></div>
 
 <script>
-/* ===== Login is checked on the server (/api/auth). The token lives only in this tab. ===== */
-const SESS="pb_admin_token";
+/* ===== Login (client-side only: keeps casual visitors out, it is NOT real security) ===== */
+const ADMIN_ID="admin", ADMIN_PW="12345678", KEY="pb_cms_v1", SESS="pb_admin_session";
 
 /* ===== Segments: f = [name,label,type,options]  type: t text | a textarea | s select | n number | d date
    cols = columns shown in the list.  Each segment matches a section of the website. ===== */
@@ -126,7 +127,7 @@ const SEG={
   seed:[{title:"Send your manuscript",text:"Share your draft and a short synopsis. We reply within two weeks."},{title:"Edit together",text:"Your editor returns notes. You approve every change."},{title:"Design and proof",text:"Review the cover and the typeset pages before anything is printed."},{title:"Print and launch",text:"We print, ship and help you plan a launch."}]},
  events:{label:"Events",hint:"Event cards. Add a date or venue in the text when you have one.",cols:["icon","title","text"],f:[["icon","Emoji icon","t"],["title","Title","t"],["text","Description","a"],["date","Date (optional)","d"],["button","Button label","t"],["link","Button link","t"]],
   seed:[{icon:"✍️",title:"Workshops",text:"Hands-on sessions on writing, editing and getting a manuscript ready.",date:"",button:"Ask about workshops",link:"https://wa.me/919000000000"},{icon:"📚",title:"Book launches",text:"Readings, signings and conversations to launch our new titles.",date:"",button:"Ask about launches",link:"https://wa.me/919000000000"},{icon:"🎤",title:"Other events",text:"Author meet-ups, book fair stalls, poetry evenings and school visits.",date:"",button:"Ask about events",link:"https://wa.me/919000000000"}]},
- feedback:{label:"Reader feedback",hint:"Approve to show a message under “What readers say”. New messages from visitors appear here as “pending”.",cols:["name","rating","message","status"],
+ feedback:{label:"Reader feedback",hint:"Approve to show a message under “What readers say”. Pending messages from this browser's site visits are imported automatically.",cols:["name","rating","message","status"],
   f:[["name","Name","t"],["rating","Rating (1–5)","s",["5","4","3","2","1"]],["message","Message","a"],["date","Date","d"],["status","Status","s",["approved","pending"]]],
   seed:[["Priya Chatterjee",5,"2026-10-12","The Salt Road stayed with me for weeks. The book arrived beautifully packed."],["Rahul Sen",5,"2026-10-28","The editing team improved my manuscript without changing my voice."],["Sanjana Dey",4,"2026-11-03","Bought Little Lantern for my daughter and she asks for it every night."],["Amit Ghosh",5,"2026-11-09","Attended the author reading in Kolkata. Warm and well organised."]].map(x=>({name:x[0],rating:String(x[1]),date:x[2],message:x[3],status:"approved"}))},
  about:{label:"About facts",hint:"Key facts in the About section (e.g. Titles published → 240+).",cols:["label","value"],f:[["label","Label","t"],["value","Value","t"]],
@@ -140,31 +141,16 @@ const $=id=>document.getElementById(id);
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function defaults(){const d={};for(const k in SEG)d[k]=SEG[k].seed.map(x=>({id:uid(),...x}));return d}
-let DB=null, cur="banners", editing=null;
-const token=()=>sessionStorage.getItem(SESS)||"";
-async function api(path,opt={}){
-  const r=await fetch(path,{...opt,headers:{"Content-Type":"application/json",Authorization:"Bearer "+token(),...(opt.headers||{})}});
-  let d={};try{d=await r.json()}catch(e){}
-  if(r.status===401&&path!=="/api/auth"){sessionStorage.removeItem(SESS);alert("Your session ended. Please log in again.");location.reload();throw new Error("auth")}
-  if(!r.ok)throw new Error(d.error||"Request failed ("+r.status+")");
-  return d;
-}
-/* saves to Redis; if you click fast, the latest data is saved after the current save finishes */
-let saving=false,dirty=false;
-async function persist(){
-  dirty=true;if(saving)return;saving=true;
-  while(dirty){
-    dirty=false;
-    try{await api("/api/save-content",{method:"POST",body:JSON.stringify({content:DB})});toast("Saved ✔ (live on the website)")}
-    catch(e){if(e.message!=="auth")toast("NOT saved: "+e.message)}
-  }
-  saving=false;
-}
+function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(d)return d}catch(e){}return defaults()}
+let DB=load(), cur="banners", editing=null;
+function persist(){try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){toast("Could not save in this browser")}}
 function toast(m){const t=$("toast");t.textContent=m;t.hidden=false;clearTimeout(t._t);t._t=setTimeout(()=>t.hidden=true,2200)}
 
-/* visitor feedback waiting for approval comes from the server */
-function mergePending(list){
-  (list||[]).forEach(f=>{if(f&&!DB.feedback.some(x=>x.id===f.id))DB.feedback.unshift({id:f.id||uid(),name:f.name,rating:String(f.rating),date:f.date,message:f.message,status:"pending"})});
+/* pull visitor feedback waiting in this browser (same domain) */
+function importPending(){
+  try{const p=JSON.parse(localStorage.getItem("pb_pending_feedback"))||[];if(!p.length)return;
+    p.forEach(f=>{if(!DB.feedback.some(x=>x.id===f.id))DB.feedback.unshift({id:f.id||uid(),name:f.name,rating:String(f.rating),date:f.date,message:f.message,status:"pending"})});
+    localStorage.removeItem("pb_pending_feedback");persist()}catch(e){}
 }
 
 /* ===== Render ===== */
@@ -226,6 +212,10 @@ $("tb").onclick=e=>{
   persist();render();
 };
 function download(name,text,type){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)}
+$("dl").onclick=()=>{
+  const out={...DB};out.feedback=DB.feedback.filter(f=>f.status==="approved");
+  download("site-content.js","// Generated by the PaperBack admin dashboard. Upload this file next to index.html.\nwindow.SITE_CONTENT = "+JSON.stringify(out,null,2)+";\n","text/javascript");toast("site-content.js downloaded");
+};
 $("ex").onclick=()=>{download("paperback-backup.json",JSON.stringify(DB,null,2),"application/json");toast("Backup downloaded")};
 $("im").onclick=()=>$("file").click();
 $("file").onchange=async e=>{
@@ -236,25 +226,14 @@ $("file").onchange=async e=>{
 $("rs").onclick=()=>{if(confirm("Reset ALL segments to the original website content? Your changes will be lost.")){DB=defaults();persist();render();toast("Reset done")}};
 
 /* ===== Session ===== */
-async function enter(){
-  $("login").hidden=true;$("app").hidden=false;$("t").textContent="Loading…";
-  try{
-    const d=await api("/api/get-content?admin=1");
-    DB=d.content&&typeof d.content==="object"?d.content:defaults();
-    for(const k in SEG)if(!Array.isArray(DB[k]))DB[k]=defaults()[k];
-    mergePending(d.pending);
-    render();
-  }catch(e){if(e.message!=="auth"){$("t").textContent="Could not load";$("h").textContent=e.message}}
-}
-$("lf").addEventListener("submit",async e=>{
-  e.preventDefault();$("le").textContent="";
-  try{
-    const d=await api("/api/auth",{method:"POST",body:JSON.stringify({id:$("u").value.trim(),password:$("p").value})});
-    sessionStorage.setItem(SESS,d.token);$("p").value="";enter();
-  }catch(x){$("le").textContent=x.message}
+function enter(){$("login").hidden=true;$("app").hidden=false;importPending();render()}
+$("lf").addEventListener("submit",e=>{
+  e.preventDefault();
+  if($("u").value.trim()===ADMIN_ID&&$("p").value===ADMIN_PW){sessionStorage.setItem(SESS,"1");$("le").textContent="";enter()}
+  else $("le").textContent="Wrong login ID or password."
 });
 $("lo").onclick=()=>{sessionStorage.removeItem(SESS);location.reload()};
-if(token())enter();
+if(sessionStorage.getItem(SESS)==="1")enter();
 </script>
 </body>
 </html>
