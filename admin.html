@@ -144,6 +144,9 @@ const SEG={
   seed:[["Priya Chatterjee",5,"2026-10-12","The Salt Road stayed with me for weeks. The book arrived beautifully packed."],["Rahul Sen",5,"2026-10-28","The editing team improved my manuscript without changing my voice."],["Sanjana Dey",4,"2026-11-03","Bought Little Lantern for my daughter and she asks for it every night."],["Amit Ghosh",5,"2026-11-09","Attended the author reading in Kolkata. Warm and well organised."]].map(x=>({name:x[0],rating:String(x[1]),date:x[2],message:x[3],status:"approved"}))},
  about:{label:"About facts",hint:"Key facts in the About section (e.g. Titles published → 240+).",cols:["label","value"],f:[["label","Label","t"],["value","Value","t"]],
   seed:[{label:"Titles published",value:"240+"},{label:"Languages",value:"English, Bengali, Hindi"},{label:"Author royalty",value:"Up to 40%"}]},
+ coupons:{label:"Coupons",hint:"Discount codes. “Show on website” = Yes puts the offer on the home page and applies it automatically on book pages; No keeps it a private code that customers type in. Prices come from each book's Price field.",cols:["code","type","value","active","show","expires"],
+  f:[["code","Coupon code (letters/numbers, no spaces)","t"],["type","Discount type","s",["percent","flat"]],["value","Value (percent: 1–100, flat: rupees off)","n"],["active","Active?","s",["Yes","No"]],["show","Show on website?","s",["No","Yes"]],["expires","Last valid day (optional)","d"],["note","Note for yourself (optional)","t"]],
+  seed:[{code:"PAPER10",type:"percent",value:"10",active:"Yes",show:"No",expires:"",note:""},{code:"WELCOME50",type:"flat",value:"50",active:"Yes",show:"No",expires:"",note:""}]},
  settings:{label:"Contact & social",hint:"Phone, email, WhatsApp, address and social links used across the site and footer.",cols:["label","value"],f:[["label","Setting name","t"],["value","Value","t"]],
   seed:[{label:"Phone",value:"+91 90000 00000"},{label:"WhatsApp number",value:"919000000000"},{label:"Email",value:"hello@paperbackpublishers.com"},{label:"Address",value:"Kolkata, West Bengal, India"},{label:"Facebook",value:"https://www.facebook.com/paperbackpublishers"},{label:"Instagram",value:"https://www.instagram.com/paperbackpublishers"}]}
 };
@@ -314,7 +317,7 @@ $("ex").onclick=()=>{download("paperback-backup.json",JSON.stringify(DB,null,2),
 $("im").onclick=()=>$("file").click();
 $("file").onchange=async e=>{
   const f=e.target.files[0];if(!f)return;
-  try{const d=JSON.parse(await f.text());for(const k in SEG)if(!Array.isArray(d[k]))throw 0;DB=d;persist();render();toast("Imported")}
+  try{const d=JSON.parse(await f.text());for(const k in SEG)if(!Array.isArray(d[k])){if(k==="coupons")d[k]=[];else throw 0}DB=d;persist();render();toast("Imported")}
   catch(x){alert("That file is not a valid backup.")}e.target.value="";
 };
 $("rs").onclick=()=>{if(confirm("Reset ALL segments to the original website content? Your changes will be lost.")){DB=defaults();persist();render();toast("Reset done")}};
@@ -330,11 +333,11 @@ async function enter(){
     d=await r.json();
   }catch(e){$("le").textContent="Could not load the saved content: "+e.message;return false}
   const saved=d&&d.content&&typeof d.content==="object"?d.content:null, fresh=defaults();
-  DB={};for(const k in SEG)DB[k]=saved&&Array.isArray(saved[k])?saved[k]:(saved?[]:fresh[k]);
+  DB={};for(const k in SEG)DB[k]=saved&&Array.isArray(saved[k])?saved[k]:(saved&&k!=="coupons"?[]:fresh[k]);
   for(const k in DB)DB[k].forEach(x=>{if(!x.id)x.id=uid()});
   const added=mergePending(d&&d.pending);
   $("login").hidden=true;$("app").hidden=false;render();
-  if(!saved||added)persist();   // first visit: store the starting content; new visitor feedback: mark as received
+  if(!saved||added||!Array.isArray(saved.coupons))persist();   // first visit: store the starting content; new visitor feedback: mark as received
   return true;
 }
 $("lf").addEventListener("submit",async e=>{
