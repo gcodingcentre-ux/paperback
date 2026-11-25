@@ -98,3 +98,19 @@
 .fb-card p{margin:0;color:var(--muted);flex:1}
 .fb-card b{color:var(--ink)}
 .fb-stars{color:#E0A100;letter-spacing:.1em;font-size:1.1rem}
+
+/* Mobile: books sit side by side as small covers in a row you can swipe left and right */
+@media (max-width:700px){
+  #books.books{display:flex;gap:1rem;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scrollbar-width:none;padding:8px 2px 16px;margin:-8px -2px 0}
+  #books.books::-webkit-scrollbar{display:none}
+  #books.books>.book{flex:0 0 118px;min-width:0;scroll-snap-align:start}
+  .rail.books{gap:1rem}
+  .rail.books>*{flex:0 0 118px}
+  .books .cover{padding:.6rem .5rem;border-radius:2px 6px 6px 2px;box-shadow:inset 5px 0 0 rgba(0,0,0,.15),0 8px 14px -8px rgba(30,58,110,.45)}
+  .books .cover strong{font-size:.82rem}
+  .books .cover span{font-size:.62rem}
+  .books .cover.has-img::after{box-shadow:inset 5px 0 0 rgba(0,0,0,.15)}
+  .books .book figcaption{font-size:.74rem;padding-top:.5rem;line-height:1.35}
+  .books .book figcaption b{overflow-wrap:anywhere}
+  .books .book figcaption .author{font-size:.7rem;padding:.1rem .5rem}
+}
