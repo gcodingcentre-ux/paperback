@@ -1,8 +1,9 @@
 /* PaperBack – book page: merges the admin's book data, then starts book.js and book-order.js. */
 (function () {
+  if (typeof BOOK_DETAILS === "undefined") window.BOOK_DETAILS = {};   // book-data.js missing or empty: build everything from the admin data
   const slug = t => String(t).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const load = src => new Promise(done => { const s = document.createElement("script"); s.src = src; s.onload = s.onerror = done; document.body.appendChild(s); });
-  const get = fetch("/api/get-content").then(r => r.ok ? r.json() : null).catch(() => null);
+  const get = fetch("/api/get-content", { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null);
   const wait = new Promise(r => setTimeout(() => r(null), 4000));   // never block the page for long
 
   Promise.race([get, wait]).then(d => {
