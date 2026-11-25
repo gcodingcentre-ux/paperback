@@ -56,6 +56,12 @@ td .cl{max-width:380px;overflow:hidden;text-overflow:ellipsis;display:-webkit-bo
 .mbox h3{font-size:1.4rem;margin-bottom:1rem}
 .row{display:flex;gap:.6rem;justify-content:flex-end;margin-top:.5rem}
 #toast{position:fixed;bottom:1.2rem;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:.6rem 1.1rem;border-radius:8px;z-index:20;font-weight:700}
+.imgbox{display:flex;gap:.9rem;align-items:flex-start;margin-top:.3rem;font-weight:400}
+.imgbox img{width:90px;aspect-ratio:2/3;object-fit:cover;border-radius:6px;border:2px solid var(--line);background:var(--sky);flex:none}
+.imgbox .noimg{width:90px;aspect-ratio:2/3;border-radius:6px;border:2px dashed var(--line);display:grid;place-items:center;color:var(--muted);font-size:.75rem;text-align:center;flex:none}
+.imgbox small{display:block;color:var(--muted);margin:.4rem 0;font-weight:400}
+.imgbox input[type=file]{padding:.4rem}
+td img.th{width:38px;aspect-ratio:2/3;object-fit:cover;border-radius:4px;border:1px solid var(--line);display:block}
 .menu-btn{display:none}
 @media(max-width:820px){
  #app{grid-template-columns:1fr}
@@ -113,9 +119,9 @@ const SEG={
  banners:{label:"Home banners",hint:"Slides in the top carousel of the home page.",cols:["title","text","color"],
   f:[["title","Heading","t"],["text","Text","a"],["button","Button label","t"],["link","Button link","t"],["color","Colour","s",["blue","navy","green"]]],
   seed:[{title:"New titles for the season",text:"Fiction, non-fiction, poetry and children's books from our latest list.",button:"Browse our titles",link:"#catalogue",color:"navy"},{title:"Publish your first book",text:"Send us your manuscript. An editor reads every submission and replies within two weeks.",button:"Submit your manuscript",link:"#submit",color:"green"},{title:"Stories for young readers",text:"Picture books and early readers that children ask to hear again.",button:"See children's books",link:"#catalogue",color:"blue"}]},
- books:{label:"Books",hint:"The catalogue and each book's landing page. Set “New release” to Yes to show it in New releases.",cols:["title","author","genre","isNew"],
-  f:[["title","Title","t"],["author","Author","t"],["genre","Genre","s",GENRES],["color","Cover colour","s",COLORS],["isNew","New release?","s",["No","Yes"]],["price","Price (₹, optional)","n"],["summary","Summary","a"],["bio","About the author","a"]],
-  seed:[["The Salt Road","Meera Sengupta","Fiction","blue","Yes"],["Monsoon Ledger","Arjun Dutta","Fiction","green","Yes"],["Quiet Algorithms","Ritika Bose","Non-fiction","navy","Yes"],["Rivers of Kolkata","Sourav Mitra","Non-fiction","moss","No"],["Little Lantern","Ananya Roy","Children","green","Yes"],["Counting Stars at Noon","Tanmoy Paul","Children","blue","No"],["Notes from a Tea Garden","Isha Banerjee","Poetry","navy","No"],["Ink & Alum","Kabir Chanda","Poetry","moss","No"]].map(b=>({title:b[0],author:b[1],genre:b[2],color:b[3],isNew:b[4],price:"",summary:"",bio:""}))},
+ books:{label:"Books",hint:"The catalogue and each book's landing page. Set “New release” to Yes to show it in New releases.",cols:["image","title","author","genre","isNew"],
+  f:[["image","Cover image","i"],["title","Title","t"],["author","Author","t"],["genre","Genre","s",GENRES],["color","Cover colour","s",COLORS],["isNew","New release?","s",["No","Yes"]],["price","Price (₹, optional)","n"],["summary","Summary","a"],["bio","About the author","a"]],
+  seed:[["The Salt Road","Meera Sengupta","Fiction","blue","Yes"],["Monsoon Ledger","Arjun Dutta","Fiction","green","Yes"],["Quiet Algorithms","Ritika Bose","Non-fiction","navy","Yes"],["Rivers of Kolkata","Sourav Mitra","Non-fiction","moss","No"],["Little Lantern","Ananya Roy","Children","green","Yes"],["Counting Stars at Noon","Tanmoy Paul","Children","blue","No"],["Notes from a Tea Garden","Isha Banerjee","Poetry","navy","No"],["Ink & Alum","Kabir Chanda","Poetry","moss","No"]].map(b=>({title:b[0],author:b[1],genre:b[2],color:b[3],isNew:b[4],price:"",summary:"",bio:"",image:""}))},
  authors:{label:"Authors",hint:"Author cards in “Our authors”.",cols:["name","book","genre"],
   f:[["name","Name","t"],["book","Known for (book)","t"],["genre","Genre","s",GENRES],["bio","Short bio","a"]],
   seed:[["Meera Sengupta","The Salt Road","Fiction","Grew up in Howrah and worked as a journalist for twelve years before turning to fiction."],["Arjun Dutta","Monsoon Ledger","Fiction","A chartered accountant and short-story writer whose work has appeared in Bengali and English magazines."],["Ritika Bose","Quiet Algorithms","Non-fiction","A data scientist and writer who teaches at a university in West Bengal."],["Sourav Mitra","Rivers of Kolkata","Non-fiction","An urban historian and walking-tour guide who has spent two decades mapping Kolkata's canals."],["Ananya Roy","Little Lantern","Children","A primary school teacher who writes the stories she wishes she had to read aloud in class."],["Isha Banerjee","Notes from a Tea Garden","Poetry","Grew up on a tea estate in the Darjeeling hills and now teaches literature."]].map(a=>({name:a[0],book:a[1],genre:a[2],bio:a[3]}))},
@@ -152,11 +158,11 @@ function persist(){
   saveChain=saveChain
     .then(()=>fetch("/api/save-content",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token()},body}))
     .then(async r=>{
-      if(r.status===401){toast("Session expired. Please log in again.",4000);setTimeout(logout,1500);return}
+      if(r.status===401){toast("Session expired. Please log in again.",4000);setTimeout(logout,1500);return false}
       if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||("Error "+r.status))}
-      toast("Saved to website ✓");
+      toast("Saved to website ✓");return true;
     })
-    .catch(e=>toast("NOT saved: "+e.message,5000));
+    .catch(e=>{toast("NOT saved: "+e.message,5000);return false});
   return saveChain;
 }
 
@@ -174,6 +180,7 @@ function nav(){
   $("nav").innerHTML=Object.keys(SEG).map(k=>`<button data-k="${k}" class="${k===cur?"on":""}">${SEG[k].label}<b>${DB[k].length}</b></button>`).join("");
 }
 function cell(seg,name,v){
+  if(name==="image")return v?`<img class="th" src="${esc(v)}" alt="" loading="lazy">`:"—";
   if(name==="status")return `<span class="pill ${v==="approved"?"ok":"wait"}">${esc(v)}</span>`;
   if(name==="rating")return "★".repeat(+v)+"☆".repeat(5-v);
   return `<div class="cl">${esc(v)}</div>`;
@@ -197,22 +204,88 @@ function openForm(id){
   $("mt").textContent=(id?"Edit ":"Add new ")+s.label.toLowerCase().replace(/s$/,"");
   $("mfields").innerHTML=s.f.map(([n,l,t,o])=>{
     const v=r[n]??(t==="s"?o[0]:(t==="d"&&n==="date"&&cur==="feedback"?new Date().toISOString().slice(0,10):""));
+    if(t==="i")return `<div class="lbl" style="font-weight:700;font-size:.9rem;margin-bottom:.9rem">${l}
+      <input type="hidden" name="${n}" value="${esc(v)}">
+      <div class="imgbox"><div id="imgslot">${v?`<img id="imgprev" src="${esc(v)}" alt="Current cover">`:`<div class="noimg">No image</div>`}</div>
+        <div><input type="file" id="imgfile" accept="image/png,image/jpeg,image/webp">
+        <small id="imginfo">JPG or PNG up to 15 MB. It is converted to a small WebP picture (about 30–80 KB) before upload.</small>
+        <button type="button" class="btn o s" id="imgclear" ${v?"":"hidden"}>Remove image</button></div></div></div>`;
     const inp=t==="a"?`<textarea name="${n}" rows="4">${esc(v)}</textarea>`
       :t==="s"?`<select name="${n}">${o.map(x=>`<option ${x==v?"selected":""}>${esc(x)}</option>`).join("")}</select>`
       :`<input name="${n}" type="${t==="n"?"number":t==="d"?"date":"text"}" value="${esc(v)}">`;
     return `<label>${l}${inp}</label>`}).join("");
-  $("modal").hidden=false;$("mfields").querySelector("input,textarea,select").focus();
+  fresh=null;originalImg=r.image||"";
+  $("modal").hidden=false;$("mfields").querySelector("input:not([type=hidden]),textarea,select").focus();
+  if($("imgfile")){$("imgfile").onchange=onPickImage;$("imgclear").onclick=clearImage}
 }
+
+/* ===== Cover images: convert to WebP in the browser, upload the small file ===== */
+let fresh=null, originalImg="";   // fresh = image uploaded in this open form but not saved yet
+function delImg(u){const m=/id=([a-f0-9]{16})$/.exec(u||"");if(!m)return;fetch("/api/upload-image?id="+m[1],{method:"DELETE",headers:{Authorization:"Bearer "+token()}}).catch(()=>{})}
+const blobOf=(c,type,q)=>new Promise(r=>c.toBlob(r,type,q));
+const dataUrl=b=>new Promise((ok,no)=>{const f=new FileReader();f.onload=()=>ok(f.result);f.onerror=()=>no(new Error("Could not read the image."));f.readAsDataURL(b)});
+async function toSmallImage(file){
+  if(!/^image\/(png|jpe?g|webp)$/.test(file.type))throw new Error("Please choose a JPG, PNG or WebP picture.");
+  if(file.size>15*1024*1024)throw new Error("That picture is larger than 15 MB.");
+  let bmp;
+  try{bmp=await createImageBitmap(file)}   // also applies the phone-camera rotation
+  catch(e){bmp=await new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=()=>no(new Error("Could not read that picture."));i.src=URL.createObjectURL(file)})}
+  const w0=bmp.width||bmp.naturalWidth,h0=bmp.height||bmp.naturalHeight;
+  if(!w0||!h0)throw new Error("Could not read that picture.");
+  let scale=Math.min(1,600/w0,900/h0), q=0.82, blob, tries=0;
+  const LIMIT=80*1024;
+  do{
+    const c=document.createElement("canvas");c.width=Math.max(1,Math.round(w0*scale));c.height=Math.max(1,Math.round(h0*scale));
+    const x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);x.imageSmoothingQuality="high";x.drawImage(bmp,0,0,c.width,c.height);
+    blob=await blobOf(c,"image/webp",q);
+    if(!blob||blob.type!=="image/webp")blob=await blobOf(c,"image/jpeg",q);   // very old browsers cannot write WebP
+    if(!blob)throw new Error("Could not convert that picture.");
+    if(blob.size<=LIMIT)break;
+    if(q>0.5)q-=0.1;else scale*=0.8;
+  }while(++tries<8);
+  if(blob.size>190*1024)throw new Error("Could not make this picture small enough. Try a smaller one.");
+  return blob;
+}
+async function onPickImage(e){
+  const file=e.target.files[0];if(!file)return;
+  const info=$("imginfo"),save=$("mf").querySelector("button[type=submit]");
+  info.textContent="Converting…";save.disabled=true;
+  try{
+    const blob=await toSmallImage(file);
+    info.textContent="Uploading…";
+    const r=await fetch("/api/upload-image",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token()},body:JSON.stringify({data:await dataUrl(blob)})});
+    const d=await r.json().catch(()=>({}));
+    if(r.status===401){toast("Session expired. Please log in again.",4000);setTimeout(logout,1500);return}
+    if(!r.ok||!d.url)throw new Error(d.error||("Upload failed ("+r.status+")"));
+    if(fresh)delImg(fresh);               // replaced a picture uploaded earlier in this same form
+    fresh=d.url;
+    document.querySelector('#mfields input[name="image"]').value=d.url;
+    $("imgslot").innerHTML=`<img id="imgprev" src="${URL.createObjectURL(blob)}" alt="New cover">`;
+    $("imgclear").hidden=false;
+    const kb=n=>(n/1024).toFixed(n<10240?1:0)+" KB";
+    info.textContent="Ready: "+kb(file.size)+" → "+kb(blob.size)+(blob.type==="image/webp"?" WebP":" JPEG")+". Click Save to use it.";
+  }catch(err){info.textContent=err.message;e.target.value=""}
+  finally{save.disabled=false}
+}
+function clearImage(){
+  if(fresh){delImg(fresh);fresh=null}
+  document.querySelector('#mfields input[name="image"]').value="";
+  $("imgslot").innerHTML='<div class="noimg">No image</div>';$("imgfile").value="";$("imgclear").hidden=true;
+  $("imginfo").textContent="Image removed. Click Save to apply.";
+}
+function closeModal(){if(fresh){delImg(fresh);fresh=null}$("modal").hidden=true}
 $("mf").addEventListener("submit",e=>{
   e.preventDefault();const d=Object.fromEntries(new FormData($("mf")));
   const first=SEG[cur].f[0][0];
   if(!String(d[first]).trim()){toast("“"+SEG[cur].f[0][1]+"” is required");return}
   if(editing)Object.assign(DB[cur].find(x=>x.id===editing),d);else DB[cur].unshift({id:uid(),...d});
-  persist();$("modal").hidden=true;render();toast(editing?"Updated":"Added");
+  const oldImg=originalImg;fresh=null;   // the new picture is now part of the content
+  persist().then(ok=>{if(ok&&oldImg&&oldImg!==d.image)delImg(oldImg)});   // remove the replaced picture only after the save worked
+  $("modal").hidden=true;render();toast(editing?"Updated":"Added");
 });
-$("mc").onclick=()=>$("modal").hidden=true;
-$("modal").addEventListener("mousedown",e=>{if(e.target===$("modal"))$("modal").hidden=true});
-addEventListener("keydown",e=>{if(e.key==="Escape")$("modal").hidden=true});
+$("mc").onclick=closeModal;
+$("modal").addEventListener("mousedown",e=>{if(e.target===$("modal"))closeModal()});
+addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("modal").hidden)closeModal()});
 
 /* ===== Actions ===== */
 $("add").onclick=()=>openForm();
@@ -221,7 +294,7 @@ $("nav").onclick=e=>{const b=e.target.closest("button");if(b){cur=b.dataset.k;$(
 $("tb").onclick=e=>{
   const b=e.target.closest("button");if(!b)return;const L=DB[cur],i=L.findIndex(x=>x.id===b.dataset.id),a=b.dataset.a;
   if(a==="ed")return openForm(b.dataset.id);
-  if(a==="del"){if(!confirm("Delete this item? This cannot be undone."))return;L.splice(i,1);toast("Deleted")}
+  if(a==="del"){if(!confirm("Delete this item? This cannot be undone."))return;const gone=L.splice(i,1)[0];toast("Deleted");persist().then(ok=>{if(ok&&gone&&gone.image)delImg(gone.image)});render();return}
   if(a==="ok"){L[i].status="approved";toast("Approved")}
   if(a==="up"&&i>0)[L[i-1],L[i]]=[L[i],L[i-1]];
   if(a==="dn"&&i<L.length-1)[L[i+1],L[i]]=[L[i],L[i+1]];
