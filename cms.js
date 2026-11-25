@@ -24,7 +24,7 @@
     if (window.pbCarouselRefresh) window.pbCarouselRefresh();
   }
 
-  function books(c) {
+  function booksSection(c) {
     const L = list(c, "books");
     if (!L || !L.length) return;
     // hero shelf
@@ -118,7 +118,7 @@
   }
 
   function apply(c) {
-    [banners, books, authors, publishing, services, process, events, feedback, about, settings].forEach(fn => { try { fn(c); } catch (e) { console.error(fn.name, e); } });
+    [banners, booksSection, authors, publishing, services, process, events, feedback, about, settings].forEach(fn => { try { fn(c); } catch (e) { console.error(fn.name, e); } });
     // keep the menu links and the scroll rails working after the cards were redrawn
     const tag = (sel, ids) => $$(sel).forEach((el, i) => { if (ids[i]) el.id = ids[i]; });
     tag("#publishing .pb-card", ["pub-self", "pub-hybrid", "pub-marketing"]);
@@ -126,7 +126,7 @@
     dispatchEvent(new Event("resize"));
   }
 
-  fetch("/api/get-content")
+  fetch("/api/get-content", { cache: "no-store" })
     .then(r => r.ok ? r.json() : null)
     .then(d => { if (d && d.content) apply(d.content); })
     .catch(() => { /* keep the built-in content */ });
