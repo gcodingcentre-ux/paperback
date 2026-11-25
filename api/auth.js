@@ -8,10 +8,10 @@ module.exports = async (req, res) => {
     if (!okRate) return L.send(res, 429, { error: "Too many attempts. Try again in a few minutes." });
 
     const { id, password } = L.body(req);
-    const ADMIN_ID = process.env.ADMIN_ID, ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
-    if (!ADMIN_ID || !ADMIN_PASSWORD) return L.send(res, 500, { error: "Admin login is not configured on the server." });
+    const ADMIN_ID = process.env.ADMIN_ID;
+    if (!ADMIN_ID) return L.send(res, 500, { error: "Admin login is not configured on the server." });
 
-    if (L.safeEqual(id || "", ADMIN_ID) && L.safeEqual(password || "", ADMIN_PASSWORD)) {
+    if (L.safeEqual(id || "", ADMIN_ID) && await L.checkPassword(password || "")) {
       return L.send(res, 200, { token: L.sign({ exp: Date.now() + 12 * 3600 * 1000 }) });
     }
     return L.send(res, 401, { error: "Wrong login ID or password." });
