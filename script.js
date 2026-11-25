@@ -14,15 +14,19 @@ const esc = x => String(x == null ? "" : x).replace(/[&<>"']/g, c => ({ "&": "&a
 const slug = t => t.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 const grid = document.getElementById("books");
 
+const coverHTML = b => b.image
+  ? `<div class="cover has-img"><img src="${esc(b.image)}" alt="Cover of ${esc(b.title)}" loading="lazy" decoding="async" width="400" height="600"></div>`
+  : `<div class="cover c-${esc(b.color)}">
+          <strong>${esc(b.title)}</strong>
+          <span>${esc(b.author)}</span>
+        </div>`;
+
 function renderBooks(genre) {
   const list = genre === "All" ? books : books.filter(b => b.genre === genre);
   grid.innerHTML = list.map(b => `
     <figure class="book">
       <a class="book-link" href="book.html?book=${slug(b.title)}">
-        <div class="cover c-${esc(b.color)}">
-          <strong>${esc(b.title)}</strong>
-          <span>${esc(b.author)}</span>
-        </div>
+        ${coverHTML(b)}
         <figcaption><b>${esc(b.title)}</b><span class="author">${esc(b.author)}</span> · ${esc(b.genre)}</figcaption>
       </a>
     </figure>`).join("");
