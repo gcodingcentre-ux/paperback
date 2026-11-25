@@ -114,3 +114,11 @@
   .books .book figcaption b{overflow-wrap:anywhere}
   .books .book figcaption .author{font-size:.7rem;padding:.1rem .5rem}
 }
+
+/* Mobile: reader feedback cards sit side by side in a row you can swipe left and right */
+@media (max-width:700px){
+  .fb-list{display:flex;gap:1rem;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scrollbar-width:none;padding:4px 2px 14px;margin:0 -2px}
+  .fb-list::-webkit-scrollbar{display:none}
+  .fb-list>.fb-card{flex:0 0 78%;max-width:300px;min-width:0;scroll-snap-align:start}
+  .fb-card p{overflow-wrap:anywhere}
+}
