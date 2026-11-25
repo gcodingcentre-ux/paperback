@@ -14,6 +14,19 @@ module.exports = async (req, res) => {
       const list = content[k];
       if (!Array.isArray(list) || list.length > 500) return L.send(res, 400, { error: "Invalid data in: " + k });
       clean[k] = list.filter(x => x && typeof x === "object" && !Array.isArray(x));
+      if (k === "coupons") {
+        const seen = new Set(), out = [];
+        for (const c of clean[k]) {
+          const code = String(c.code || "").trim().toUpperCase(), value = Number(c.value);
+          if (!/^[A-Z0-9_-]{2,20}$/.test(code)) return L.send(res, 400, { error: "Coupon code must be 2–20 letters or numbers, no spaces: “" + (c.code || "(empty)") + "”" });
+          if (seen.has(code)) return L.send(res, 400, { error: "Coupon code used twice: " + code });
+          const type = c.type === "flat" ? "flat" : "percent";
+          if (!(value > 0) || (type === "percent" && value > 100) || value > 100000) return L.send(res, 400, { error: "Coupon " + code + ": discount must be 1–100 for percent, or a rupee amount above 0." });
+          seen.add(code);
+          out.push({ id: c.id, code, type, value, active: c.active === "No" ? "No" : "Yes", show: c.show === "Yes" ? "Yes" : "No", expires: /^\d{4}-\d{2}-\d{2}$/.test(String(c.expires || "")) ? c.expires : "", note: String(c.note || "").slice(0, 120) });
+        }
+        clean[k] = out;
+      }
       if (k === "books") clean[k] = clean[k].map(b => ({ ...b, image: IMG_URL.test(String(b.image || "")) ? b.image : "" }));
     }
     const json = JSON.stringify(clean);
