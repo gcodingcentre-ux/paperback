@@ -5,6 +5,7 @@ const { Redis } = require("@upstash/redis");
 const CONTENT_KEY = "pb:content";            // the whole CMS data (JSON)
 const IMG_PREFIX = "pb:img:";               // one key per uploaded cover image
 const PENDING_KEY = "pb:pending_feedback";   // visitor feedback waiting for approval (list)
+const PASS_KEY = "pb:admin_pw";             // password saved by "Change / Forgot password" (overrides ADMIN_PASSWORD)
 const SEGMENTS = ["banners","books","authors","publishing","services","process","events","feedback","about","settings","coupons"];
 
 // Works with either pair of variable names that the Upstash integration can create on Vercel.
@@ -73,9 +74,25 @@ function fail(res, e) {
   send(res, 500, { error: "Server error. Check the Vercel function logs." });
 }
 
+// Password: a saved (scrypt-hashed) password wins; until one is saved, the ADMIN_PASSWORD env variable is used.
+async function checkPassword(pw) {
+  const rec = await redis().get(PASS_KEY);
+  if (rec && rec.salt && rec.hash) {
+    const h = crypto.scryptSync(String(pw), Buffer.from(rec.salt, "hex"), 32);
+    const good = Buffer.from(rec.hash, "hex");
+    return h.length === good.length && crypto.timingSafeEqual(h, good);
+  }
+  const env = process.env.ADMIN_PASSWORD;
+  return !!env && safeEqual(pw, env);
+}
+async function setPassword(pw) {
+  const salt = crypto.randomBytes(16);
+  await redis().set(PASS_KEY, { salt: salt.toString("hex"), hash: crypto.scryptSync(String(pw), salt, 32).toString("hex") });
+}
+
 // A coupon works when it is switched on and its last day (India time) has not passed.
 function couponLive(c) {
   const today = new Date(Date.now() + 19800000).toISOString().slice(0, 10);
   return !!c && c.active !== "No" && (!c.expires || today <= c.expires);
 }
-module.exports = { couponLive, redis, sign, verify, isAdmin, safeEqual, ip, rateLimit, body, send, fail, CONTENT_KEY, PENDING_KEY, IMG_PREFIX, SEGMENTS };
+module.exports = { checkPassword, setPassword, couponLive, redis, sign, verify, isAdmin, safeEqual, ip, rateLimit, body, send, fail, CONTENT_KEY, PENDING_KEY, IMG_PREFIX, SEGMENTS };
