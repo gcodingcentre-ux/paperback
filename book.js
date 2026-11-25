@@ -16,10 +16,8 @@ if (book) {
       <p class="genre">${esc(book.genre)}</p>
       <h1>${esc(book.title)}</h1>
       <p class="by">by ${esc(book.author)}</p>
-      <h2>Summary</h2>
-      <p>${esc(book.summary)}</p>
-      <h2>About the author</h2>
-      <p>${esc(book.bio)}</p>
+      ${book.summary ? `<h2>Summary</h2><p>${esc(book.summary)}</p>` : ""}
+      ${book.bio ? `<h2>About the author</h2><p>${esc(book.bio)}</p>` : ""}
       <a class="btn" href="index.html#catalogue">Browse more titles</a>
     </div>`;
 } else {
