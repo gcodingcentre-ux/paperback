@@ -15,10 +15,7 @@ const BOOK_PRICES = { // price in rupees
 
 Object.assign(BOOK_PRICES, window.PB_PRICES || {});
 
-const COUPONS = { // type "percent" = % off, "flat" = rupees off
-  "PAPER10":  { type: "percent", value: 10 },
-  "WELCOME50": { type: "flat", value: 50 }
-};
+// Coupons are managed in the admin dashboard (Coupons section) and checked on the server (/api/coupon).
 
 (function () {
   const slug = new URLSearchParams(location.search).get("book");
@@ -62,26 +59,35 @@ const COUPONS = { // type "percent" = % off, "flat" = rupees off
     text += applied
       ? `Price: ${inr(price)}\nCoupon: ${applied} (-${inr(off)})\nTotal: ${inr(final)}`
       : `Price: ${inr(price)}`;
-    wa.href = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
+    wa.href = `https://wa.me/${window.PB_WA || WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
   }
 
-  function apply() {
-    const code = input.value.trim().toUpperCase();
-    const c = COUPONS[code];
-    msg.className = "coupon-msg";
-    if (!code) { msg.textContent = "Please enter a coupon code."; msg.classList.add("bad"); return; }
-    if (!c) { applied = null; final = price; msg.textContent = "That code isn't valid."; msg.classList.add("bad"); render(); return; }
-    const off = c.type === "percent" ? Math.round(price * c.value / 100) : c.value;
-    final = Math.max(0, price - off);
-    applied = code;
-    msg.textContent = `Coupon ${code} applied.`;
-    msg.classList.add("ok");
+  const offOf = c => Math.min(price, c.type === "percent" ? Math.round(price * c.value / 100) : c.value);
+  function use(c, auto) {
+    final = Math.max(0, price - offOf(c)); applied = c.code;
+    msg.className = "coupon-msg ok";
+    msg.textContent = auto ? `Offer ${c.code} applied automatically.` : `Coupon ${c.code} applied.`;
     render();
   }
+  async function apply() {
+    const code = input.value.trim().toUpperCase();
+    msg.className = "coupon-msg";
+    if (!code) { msg.textContent = "Please enter a coupon code."; msg.classList.add("bad"); return; }
+    msg.textContent = "Checking…";
+    try {
+      const r = await fetch("/api/coupon", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { applied = null; final = price; msg.className = "coupon-msg bad"; msg.textContent = j.error || "That code isn't valid."; render(); return; }
+      use(j, false);
+    } catch (e) { msg.className = "coupon-msg bad"; msg.textContent = "Could not check the code. Please try again."; }
+  }
 
+  // A public offer from the admin is applied automatically (the biggest saving wins)
+  const pub = (window.PB_OFFERS || []).filter(o => offOf(o) > 0).sort((a, b) => offOf(b) - offOf(a))[0];
   $(".coupon-apply").addEventListener("click", apply);
   input.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); apply(); } });
   render();
+  if (pub) use(pub, true);
 })();
 
 // Scroll-to-top button
