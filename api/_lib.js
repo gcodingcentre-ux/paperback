@@ -5,7 +5,7 @@ const { Redis } = require("@upstash/redis");
 const CONTENT_KEY = "pb:content";            // the whole CMS data (JSON)
 const IMG_PREFIX = "pb:img:";               // one key per uploaded cover image
 const PENDING_KEY = "pb:pending_feedback";   // visitor feedback waiting for approval (list)
-const SEGMENTS = ["banners","books","authors","publishing","services","process","events","feedback","about","settings"];
+const SEGMENTS = ["banners","books","authors","publishing","services","process","events","feedback","about","settings","coupons"];
 
 // Works with either pair of variable names that the Upstash integration can create on Vercel.
 let _redis;
@@ -73,4 +73,9 @@ function fail(res, e) {
   send(res, 500, { error: "Server error. Check the Vercel function logs." });
 }
 
-module.exports = { redis, sign, verify, isAdmin, safeEqual, ip, rateLimit, body, send, fail, CONTENT_KEY, PENDING_KEY, IMG_PREFIX, SEGMENTS };
+// A coupon works when it is switched on and its last day (India time) has not passed.
+function couponLive(c) {
+  const today = new Date(Date.now() + 19800000).toISOString().slice(0, 10);
+  return !!c && c.active !== "No" && (!c.expires || today <= c.expires);
+}
+module.exports = { couponLive, redis, sign, verify, isAdmin, safeEqual, ip, rateLimit, body, send, fail, CONTENT_KEY, PENDING_KEY, IMG_PREFIX, SEGMENTS };
