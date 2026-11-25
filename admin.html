@@ -56,7 +56,8 @@ td .cl{max-width:380px;overflow:hidden;text-overflow:ellipsis;display:-webkit-bo
 .pill.ok{background:#e4f2cc;color:var(--gd)}.pill.wait{background:#fff0c9;color:#8a5a00}
 .empty{padding:2rem;text-align:center;color:var(--muted)}
 /* modal */
-#modal{position:fixed;inset:0;background:#0a1530a8;display:grid;place-items:center;padding:1rem;z-index:10}
+#modal,#pwm{position:fixed;inset:0;background:#0a1530a8;display:grid;place-items:center;padding:1rem;z-index:10}
+.flink{background:0;border:0;color:var(--blue);text-decoration:underline;padding:0;margin-top:.9rem;font-weight:500}
 .mbox{background:#fff;border-radius:14px;width:100%;max-width:560px;max-height:92vh;overflow:auto;padding:1.5rem}
 .mbox h3{font-size:1.4rem;margin-bottom:1rem}
 .row{display:flex;gap:.6rem;justify-content:flex-end;margin-top:.5rem}
@@ -85,6 +86,17 @@ td img.th{width:38px;aspect-ratio:2/3;object-fit:cover;border-radius:4px;border:
     <label>Password<input id="p" type="password" autocomplete="current-password"></label>
     <div class="err" id="le" aria-live="polite"></div>
     <button class="btn" type="submit">Log in</button>
+    <button class="flink" type="button" id="fp">Forgot password?</button>
+  </form>
+  <form class="lbox" id="rf" hidden>
+    <h1>Reset password</h1>
+    <p>Enter the recovery key (the <b>ADMIN_SECRET</b> value in your Vercel project settings) and choose a new password.</p>
+    <label>Recovery key<input id="rk" type="password" autocomplete="off"></label>
+    <label>New password (8+ characters)<input id="rn" type="password" autocomplete="new-password"></label>
+    <label>Repeat new password<input id="rn2" type="password" autocomplete="new-password"></label>
+    <div class="err" id="re" aria-live="polite"></div>
+    <button class="btn" type="submit">Set new password</button>
+    <button class="flink" type="button" id="rb">Back to login</button>
   </form>
 </section>
 
@@ -97,6 +109,7 @@ td img.th{width:38px;aspect-ratio:2/3;object-fit:cover;border-radius:4px;border:
       <button class="btn" id="ex">Export JSON backup</button>
       <button class="btn" id="im">Import JSON</button>
       <button class="btn" id="rs">Reset to defaults</button>
+      <button class="btn" id="cp">Change password</button>
       <button class="btn" id="lo">Log out</button>
       <input type="file" id="file" accept=".json" hidden>
     </div>
@@ -110,6 +123,12 @@ td img.th{width:38px;aspect-ratio:2/3;object-fit:cover;border-radius:4px;border:
 </div>
 
 <div id="modal" hidden><form class="mbox" id="mf"><h3 id="mt"></h3><div id="mfields"></div><div class="row"><button type="button" class="btn o" id="mc">Cancel</button><button class="btn g" type="submit">Save</button></div></form></div>
+<div id="pwm" hidden><form class="mbox" id="pf"><h3>Change password</h3>
+  <label>Current password<input id="pc" type="password" autocomplete="current-password"></label>
+  <label>New password (8+ characters)<input id="pn" type="password" autocomplete="new-password"></label>
+  <label>Repeat new password<input id="pn2" type="password" autocomplete="new-password"></label>
+  <div class="err" id="pe" aria-live="polite"></div>
+  <div class="row"><button type="button" class="btn o" id="pcx">Cancel</button><button class="btn g" type="submit">Change password</button></div></form></div>
 <div id="toast" hidden></div>
 
 <script>
@@ -141,7 +160,7 @@ const SEG={
   seed:[{icon:"✍️",title:"Workshops",text:"Hands-on sessions on writing, editing and getting a manuscript ready.",date:"",button:"Ask about workshops",link:"https://wa.me/919000000000"},{icon:"📚",title:"Book launches",text:"Readings, signings and conversations to launch our new titles.",date:"",button:"Ask about launches",link:"https://wa.me/919000000000"},{icon:"🎤",title:"Other events",text:"Author meet-ups, book fair stalls, poetry evenings and school visits.",date:"",button:"Ask about events",link:"https://wa.me/919000000000"}]},
  feedback:{label:"Reader feedback",hint:"Approve to show a message under “What readers say”. New messages from website visitors appear here as “pending”.",cols:["name","rating","message","status"],
   f:[["name","Name","t"],["rating","Rating (1–5)","s",["5","4","3","2","1"]],["message","Message","a"],["date","Date","d"],["status","Status","s",["approved","pending"]]],
-  seed:[["Priya Chatterjee",5,"2026-10-12","The Salt Road stayed with me for weeks. The book arrived beautifully packed."],["Rahul Sen",5,"2026-10-28","The editing team improved my manuscript without changing my voice."],["Sanjana Dey",4,"2026-11-03","Bought Little Lantern for my daughter and she asks for it every night."],["Amit Ghosh",5,"2026-11-09","Attended the author reading in Kolkata. Warm and well organised."]].map(x=>({name:x[0],rating:String(x[1]),date:x[2],message:x[3],status:"approved"}))},
+  seed:[]},
  about:{label:"About facts",hint:"Key facts in the About section (e.g. Titles published → 240+).",cols:["label","value"],f:[["label","Label","t"],["value","Value","t"]],
   seed:[{label:"Titles published",value:"240+"},{label:"Languages",value:"English, Bengali, Hindi"},{label:"Author royalty",value:"Up to 40%"}]},
  coupons:{label:"Coupons",hint:"Discount codes. “Show on website” = Yes puts the offer on the home page and applies it automatically on book pages; No keeps it a private code that customers type in. Prices come from each book's Price field.",cols:["code","type","value","active","show","expires"],
@@ -160,17 +179,20 @@ let DB=defaults(), cur="banners", editing=null;
 function toast(m,ms){const t=$("toast");t.textContent=m;t.hidden=false;clearTimeout(t._t);t._t=setTimeout(()=>t.hidden=true,ms||2200)}
 
 /* Every change is sent to the server (Redis). Saves run one after another so they never overwrite each other. */
-let saveChain=Promise.resolve();
+let saveChain=Promise.resolve(), lastGood="";   // lastGood = the content the server accepted last
 function persist(){
-  const body='{"content":'+JSON.stringify(DB)+'}';
+  const snap=JSON.stringify(DB), body='{"content":'+snap+'}';
   saveChain=saveChain
     .then(()=>fetch("/api/save-content",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token()},body}))
     .then(async r=>{
       if(r.status===401){toast("Session expired. Please log in again.",4000);setTimeout(logout,1500);return false}
       if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||("Error "+r.status))}
-      toast("Saved to website ✓");return true;
+      lastGood=snap;toast("Saved to website ✓");return true;
     })
-    .catch(e=>{toast("NOT saved: "+e.message,5000);return false});
+    .catch(e=>{
+      // The server refused this change: undo it here too, so one bad entry cannot block every later save.
+      if(lastGood){DB=JSON.parse(lastGood);render()}
+      toast("NOT saved (change undone): "+e.message,6000);return false});
   return saveChain;
 }
 
@@ -190,7 +212,7 @@ function nav(){
 function cell(seg,name,v){
   if(name==="image")return v?`<img class="th" src="${esc(v)}" alt="" loading="lazy">`:"—";
   if(name==="status")return `<span class="pill ${v==="approved"?"ok":"wait"}">${esc(v)}</span>`;
-  if(name==="rating")return "★".repeat(+v)+"☆".repeat(5-v);
+  if(name==="rating"){const n=Math.min(5,Math.max(0,parseInt(v,10)||0));return "★".repeat(n)+"☆".repeat(5-n)}
   return `<div class="cl">${esc(v)}</div>`;
 }
 function render(){
@@ -286,6 +308,13 @@ $("mf").addEventListener("submit",e=>{
   e.preventDefault();const d=Object.fromEntries(new FormData($("mf")));
   const first=SEG[cur].f[0][0];
   if(!String(d[first]).trim()){toast("“"+SEG[cur].f[0][1]+"” is required");return}
+  if(cur==="coupons"){
+    const code=String(d.code||"").trim().toUpperCase(),val=Number(d.value);
+    if(!/^[A-Z0-9_-]{2,20}$/.test(code)){toast("Coupon code must be 2–20 letters or numbers, no spaces",4000);return}
+    if(DB.coupons.some(c=>c.id!==editing&&String(c.code).trim().toUpperCase()===code)){toast("That coupon code already exists",4000);return}
+    if(!(val>0)||(d.type==="percent"&&val>100)||val>100000){toast("Discount must be 1–100 for percent, or rupees above 0",4000);return}
+    d.code=code;
+  }
   if(editing)Object.assign(DB[cur].find(x=>x.id===editing),d);else DB[cur].unshift({id:uid(),...d});
   const oldImg=originalImg;fresh=null;   // the new picture is now part of the content
   persist().then(ok=>{if(ok&&oldImg&&oldImg!==d.image)delImg(oldImg)});   // remove the replaced picture only after the save worked
@@ -335,6 +364,7 @@ async function enter(){
   const saved=d&&d.content&&typeof d.content==="object"?d.content:null, fresh=defaults();
   DB={};for(const k in SEG)DB[k]=saved&&Array.isArray(saved[k])?saved[k]:(saved&&k!=="coupons"?[]:fresh[k]);
   for(const k in DB)DB[k].forEach(x=>{if(!x.id)x.id=uid()});
+  lastGood=saved?JSON.stringify(DB):"";
   const added=mergePending(d&&d.pending);
   $("login").hidden=true;$("app").hidden=false;render();
   if(!saved||added||!Array.isArray(saved.coupons))persist();   // first visit: store the starting content; new visitor feedback: mark as received
@@ -353,6 +383,43 @@ $("lf").addEventListener("submit",async e=>{
   finally{btn.disabled=false}
 });
 $("lo").onclick=logout;
+
+/* ===== Change password (logged in) and Forgot password (recovery key) ===== */
+function postPw(payload,auth){
+  return fetch("/api/password",{method:"POST",headers:Object.assign({"Content-Type":"application/json"},auth?{Authorization:"Bearer "+token()}:{}),body:JSON.stringify(payload)})
+    .then(async r=>({r,d:await r.json().catch(()=>({}))}));
+}
+$("cp").onclick=()=>{$("pf").reset();$("pe").textContent="";$("pwm").hidden=false;$("pc").focus()};
+$("pcx").onclick=()=>{$("pwm").hidden=true};
+$("pf").addEventListener("submit",async e=>{
+  e.preventDefault();const err=$("pe");err.textContent="";
+  if($("pn").value.length<8){err.textContent="The new password must be at least 8 characters.";return}
+  if($("pn").value!==$("pn2").value){err.textContent="The two new passwords do not match.";return}
+  const btn=$("pf").querySelector("button[type=submit]");btn.disabled=true;
+  try{
+    const {r,d}=await postPw({action:"change",current:$("pc").value,next:$("pn").value},true);
+    if(r.status===401){$("pwm").hidden=true;toast("Session expired. Please log in again.",4000);setTimeout(logout,1500);return}
+    if(!r.ok){err.textContent=d.error||("Error "+r.status);return}
+    $("pwm").hidden=true;$("pf").reset();toast("Password changed ✓",3500);
+  }catch(x){err.textContent="Could not reach the server."}
+  finally{btn.disabled=false}
+});
+$("fp").onclick=()=>{$("lf").hidden=true;$("rf").hidden=false;$("rk").focus()};
+$("rb").onclick=()=>{$("rf").hidden=true;$("lf").hidden=false;$("re").textContent=""};
+$("rf").addEventListener("submit",async e=>{
+  e.preventDefault();const err=$("re");err.textContent="";
+  if(!$("rk").value){err.textContent="Enter the recovery key.";return}
+  if($("rn").value.length<8){err.textContent="The new password must be at least 8 characters.";return}
+  if($("rn").value!==$("rn2").value){err.textContent="The two new passwords do not match.";return}
+  const btn=$("rf").querySelector("button[type=submit]");btn.disabled=true;
+  try{
+    const {r,d}=await postPw({action:"reset",key:$("rk").value,next:$("rn").value},false);
+    if(!r.ok){err.textContent=d.error||("Error "+r.status);return}
+    $("rf").reset();$("rb").onclick();$("le").textContent="Password changed. Log in with your new password.";
+  }catch(x){err.textContent="Could not reach the server."}
+  finally{btn.disabled=false}
+});
+addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("pwm").hidden)$("pwm").hidden=true});
 if(token())enter();
 </script>
 </body>
