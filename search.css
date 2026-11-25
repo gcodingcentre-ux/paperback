@@ -34,3 +34,10 @@
   .sb-input{font-size:16px}  /* 16px stops iPhones from zooming in when the box is tapped */
 }
 @media (prefers-reduced-motion:reduce){.sb-ph span{transition:opacity .2s}.sb-ph span.out,.sb-ph span:not(.on){transform:none}}
+
+/* "Showing results for ..." bar above the catalogue */
+.cat-status{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:.6rem 1rem;margin:0 0 1rem;font-weight:700;color:var(--blue-deep)}
+.cat-status[hidden]{display:none}
+.cat-status button{font:inherit;font-weight:700;font-size:.9rem;color:var(--blue-deep);background:#fff;border:2px solid #cfd9ee;border-radius:999px;padding:.25rem .9rem;cursor:pointer}
+.cat-status button:hover{border-color:var(--blue)}
+.cat-empty{margin:1rem auto;color:var(--muted);text-align:center;flex:1 0 100%}
