@@ -9,7 +9,8 @@
   const pick = (v, allowed, fb) => allowed.includes(v) ? v : fb;
   const COLORS = ["blue", "green", "navy", "moss"];
   const list = (c, k) => Array.isArray(c[k]) ? c[k].filter(x => x && typeof x === "object") : null;
-  const cover = b => `<div class="cover c-${pick(b.color, COLORS, "blue")}"><strong>${esc(b.title)}</strong><span>${esc(b.author)}</span></div>`;
+  const IMG = /^\/api\/image\?id=[a-f0-9]{16}$/;
+  const cover = b => IMG.test(String(b.image || "")) ? `<div class="cover has-img"><img src="${esc(b.image)}" alt="Cover of ${esc(b.title)}" decoding="async" width="400" height="600"></div>` : `<div class="cover c-${pick(b.color, COLORS, "blue")}"><strong>${esc(b.title)}</strong><span>${esc(b.author)}</span></div>`;
 
   function banners(c) {
     const L = list(c, "banners"), B = list(c, "books") || [];
@@ -37,7 +38,7 @@
     }
     // catalogue (script.js owns `books` and renderBooks)
     if (typeof books !== "undefined" && typeof renderBooks === "function") {
-      books.splice(0, books.length, ...L.map(b => ({ title: String(b.title || ""), author: String(b.author || ""), genre: String(b.genre || ""), color: pick(b.color, COLORS, "blue") })));
+      books.splice(0, books.length, ...L.map(b => ({ title: String(b.title || ""), author: String(b.author || ""), genre: String(b.genre || ""), color: pick(b.color, COLORS, "blue"), image: IMG.test(String(b.image || "")) ? b.image : "" })));
       const chip = $(".chip.is-active");
       renderBooks(chip ? chip.dataset.genre : "All");
     }
