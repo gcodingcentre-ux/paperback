@@ -138,3 +138,9 @@ form .btn{justify-self:start}
 /* book links */
 .book-link{display:block;text-decoration:none;color:inherit}
 .book-link:hover figcaption b{color:var(--blue);text-decoration:underline}
+
+/* book cover photos uploaded from the admin (served as small WebP files) */
+.cover.has-img{padding:0;overflow:hidden;background:#e9eef8}
+.cover.has-img:not(.big-cover){position:relative}
+.cover.has-img img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.cover.has-img::after{content:"";position:absolute;inset:0;box-shadow:inset 8px 0 0 rgba(0,0,0,.15);border-radius:inherit;pointer-events:none}
