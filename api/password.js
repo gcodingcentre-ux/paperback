@@ -1,5 +1,5 @@
 // POST { action: "change", current, next }   (admin logged in)  -> changes the password
-// POST { action: "reset",  key, next }       (forgot password)   -> key is the server's ADMIN_SECRET (Vercel environment variable)
+// POST { action: "reset",  key, next }       (forgot password)   -> key is ADMIN_RECOVERY_KEY (Vercel environment variable; falls back to ADMIN_SECRET)
 const L = require("./_lib");
 
 module.exports = async (req, res) => {
@@ -18,7 +18,8 @@ module.exports = async (req, res) => {
 
     if (b.action === "reset") {
       if (!(await L.rateLimit("pwreset:" + L.ip(req), 5, 900))) return L.send(res, 429, { error: "Too many attempts. Try again in a few minutes." });
-      if (!L.safeEqual(String(b.key || ""), process.env.ADMIN_SECRET || "")) return L.send(res, 403, { error: "That recovery key is not correct." });
+      const recovery = process.env.ADMIN_RECOVERY_KEY || process.env.ADMIN_SECRET || "";
+      if (!recovery || !L.safeEqual(String(b.key || ""), recovery)) return L.send(res, 403, { error: "That recovery key is not correct." });
       await L.setPassword(next);
       return L.send(res, 200, { ok: true });
     }
