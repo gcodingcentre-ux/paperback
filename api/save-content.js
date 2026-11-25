@@ -1,5 +1,6 @@
 // POST { content }  (admin only)  -> saves the whole CMS data in Redis
 const L = require("./_lib");
+const IMG_URL = /^\/api\/image\?id=[a-f0-9]{16}$/;
 
 module.exports = async (req, res) => {
   if (req.method !== "POST") return L.send(res, 405, { error: "Method not allowed" });
@@ -13,6 +14,7 @@ module.exports = async (req, res) => {
       const list = content[k];
       if (!Array.isArray(list) || list.length > 500) return L.send(res, 400, { error: "Invalid data in: " + k });
       clean[k] = list.filter(x => x && typeof x === "object" && !Array.isArray(x));
+      if (k === "books") clean[k] = clean[k].map(b => ({ ...b, image: IMG_URL.test(String(b.image || "")) ? b.image : "" }));
     }
     const json = JSON.stringify(clean);
     if (json.length > 1500000) return L.send(res, 413, { error: "Content is too large." });
