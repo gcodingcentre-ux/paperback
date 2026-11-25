@@ -58,7 +58,7 @@ function ip(req) {
 async function rateLimit(key, max, windowSec) {
   const k = "pb:rl:" + key;
   const n = await redis().incr(k);
-  if (n === 1) await redis().expire(k, windowSec);
+  if (n === 1 || (await redis().ttl(k)) < 0) await redis().expire(k, windowSec);   // also repairs a counter that lost its expiry
   return n <= max;
 }
 function body(req) {
