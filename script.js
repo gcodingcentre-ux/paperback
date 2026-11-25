@@ -21,22 +21,52 @@ const coverHTML = b => b.image
           <span>${esc(b.author)}</span>
         </div>`;
 
+// Text typed in the top search bar (empty = show everything). Set through pbCatalogueSearch().
+let searchTerm = "";
+const matches = (b, q) => [b.title, b.author, b.genre].some(v => String(v || "").toLowerCase().includes(q));
+
 function renderBooks(genre) {
-  const list = genre === "All" ? books : books.filter(b => b.genre === genre);
+  let list = genre === "All" ? books : books.filter(b => b.genre === genre);
+  if (searchTerm) list = list.filter(b => matches(b, searchTerm.toLowerCase()));
   grid.scrollLeft = 0;
-  grid.innerHTML = list.map(b => `
+  grid.innerHTML = list.length ? list.map(b => `
     <figure class="book">
       <a class="book-link" href="book.html?book=${slug(b.title)}">
         ${coverHTML(b)}
         <figcaption><b>${esc(b.title)}</b><span class="author">${esc(b.author)}</span> · ${esc(b.genre)}</figcaption>
       </a>
-    </figure>`).join("");
+    </figure>`).join("") : `<p class="cat-empty">No books found${searchTerm ? " for \u201c" + esc(searchTerm) + "\u201d" : ""}.</p>`;
+  const bar = catalogueBar();
+  bar.hidden = !searchTerm;
+  bar.querySelector("span").textContent = searchTerm ? "Showing results for \u201c" + searchTerm + "\u201d" : "";
+}
+
+// The little "Showing results for ... Clear" bar above the catalogue
+function catalogueBar() {
+  let bar = document.getElementById("cat-status");
+  if (!bar) {
+    bar = document.createElement("div");
+    bar.id = "cat-status"; bar.className = "cat-status"; bar.setAttribute("role", "status"); bar.hidden = true;
+    bar.innerHTML = '<span></span><button type="button">Show all books</button>';
+    bar.querySelector("button").addEventListener("click", () => pbCatalogueSearch(""));
+    grid.before(bar);
+  }
+  return bar;
+}
+
+// Used by the search bar: show only the matching books in the catalogue and scroll to it
+function pbCatalogueSearch(q, scroll) {
+  searchTerm = String(q || "").trim();
+  document.querySelectorAll(".chip").forEach(c => c.classList.toggle("is-active", c.dataset.genre === "All"));
+  renderBooks("All");
+  if (scroll) document.getElementById("catalogue").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion:reduce)").matches ? "auto" : "smooth" });
 }
 
 document.querySelectorAll(".chip").forEach(chip => {
   chip.addEventListener("click", () => {
     document.querySelectorAll(".chip").forEach(c => c.classList.remove("is-active"));
     chip.classList.add("is-active");
+    searchTerm = "";   // choosing a genre replaces any search from the top bar
     renderBooks(chip.dataset.genre);
   });
 });
