@@ -23,6 +23,7 @@ const coverHTML = b => b.image
 
 function renderBooks(genre) {
   const list = genre === "All" ? books : books.filter(b => b.genre === genre);
+  grid.scrollLeft = 0;
   grid.innerHTML = list.map(b => `
     <figure class="book">
       <a class="book-link" href="book.html?book=${slug(b.title)}">
