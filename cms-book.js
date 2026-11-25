@@ -7,6 +7,11 @@
   const wait = new Promise(r => setTimeout(() => r(null), 4000));   // never block the page for long
 
   Promise.race([get, wait]).then(d => {
+    if (d && d.content) {
+      window.PB_OFFERS = (Array.isArray(d.content.coupons) ? d.content.coupons : []).filter(o => o && o.code && Number(o.value) > 0);
+      const wa = ((d.content.settings || []).find(x => String(x.label).toLowerCase() === "whatsapp number") || {}).value;
+      if (wa && String(wa).replace(/\D/g, "").length >= 10) window.PB_WA = String(wa).replace(/\D/g, "");
+    }
     const L = d && d.content && Array.isArray(d.content.books) && d.content.books.length ? d.content.books : null;
     if (L) {
       const A = (d.content.authors || []).filter(a => a && a.name);
