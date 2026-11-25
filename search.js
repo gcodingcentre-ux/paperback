@@ -60,11 +60,24 @@
     else if (e.key === "ArrowUp") { e.preventDefault(); setActive(active - 1); }
     else if (e.key === "Escape") { close(); input.blur(); }
   });
+  /* Enter / search button:
+       - an arrow-selected result            -> open that book
+       - the typed text is exactly a title   -> open that book
+       - other matches                       -> show them in the catalogue (scrolls down)
+       - no matches                          -> stay here and say so */
+  const norm = t => String(t || "").trim().toLowerCase().replace(/\s+/g, " ");
+  const same = (a, b) => norm(a) === norm(b) || (slug(a) && slug(a) === slug(b));
   form.addEventListener("submit", e => {
     e.preventDefault();
+    const typed = input.value.trim();
+    if (!typed) { input.focus(); return; }
+    const sel = active;   // remember the arrow-key choice: render() below resets it
     render();
-    const pick = active >= 0 ? items[active] : items[0];
-    if (pick) location.href = "book.html?book=" + slug(pick.title);
+    if (sel >= 0 && items[sel]) { location.href = "book.html?book=" + slug(items[sel].title); return; }
+    const exact = catalogue().find(b => same(b.title, typed));
+    if (exact) { location.href = "book.html?book=" + slug(exact.title); return; }
+    if (items.length && typeof pbCatalogueSearch === "function") { close(); input.blur(); pbCatalogueSearch(typed, true); }
+    /* no match: the list already says "No book found" */
   });
   document.addEventListener("click", e => { if (!form.contains(e.target)) close(); });
 })();
