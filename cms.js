@@ -25,6 +25,18 @@
     if (window.pbCarouselRefresh) window.pbCarouselRefresh();
   }
 
+  // Offers marked "Show on website": a strip under the banner, and discounted prices on the book cards.
+  function offers(c) {
+    const today = new Date(Date.now() + 19800000).toISOString().slice(0, 10);
+    window.PB_OFFERS = (list(c, "coupons") || []).filter(o => o.code && Number(o.value) > 0 && (!o.expires || today <= o.expires))
+      .map(o => ({ code: String(o.code), type: o.type === "flat" ? "flat" : "percent", value: Number(o.value) }));
+    const old = $(".offer-strip"); if (old) old.remove();
+    const host = $(".carousel"); if (!host || !window.PB_OFFERS.length) return;
+    const strip = document.createElement("div"); strip.className = "offer-strip";
+    strip.innerHTML = window.PB_OFFERS.slice(0, 2).map(o => `Use code <b>${esc(o.code)}</b> for ${o.type === "percent" ? o.value + "% off" : "\u20B9" + o.value + " off"}`).join(" &nbsp;\u00B7&nbsp; ") + " on any book";
+    host.insertAdjacentElement("afterend", strip);
+  }
+
   function booksSection(c) {
     const L = list(c, "books");
     if (!L || !L.length) return;
@@ -33,12 +45,12 @@
     // new releases
     const nr = $("#new-releases .books"), fresh = L.filter(b => b.isNew === "Yes");
     if (nr) {
-      nr.innerHTML = fresh.map(b => `<figure class="book release"><span class="badge">New</span><a class="book-link" href="book.html?book=${slug(b.title)}">${cover(b)}<figcaption><b>${esc(b.title)}</b><span class="author">${esc(b.author)}</span> · ${esc(b.genre)}</figcaption></a></figure>`).join("");
+      nr.innerHTML = fresh.map(b => `<figure class="book release"><span class="badge">New</span><a class="book-link" href="book.html?book=${slug(b.title)}">${cover(b)}<figcaption><b>${esc(b.title)}</b><span class="author">${esc(b.author)}</span> · ${esc(b.genre)}${typeof priceHTML === "function" ? priceHTML(b) : ""}</figcaption></a></figure>`).join("");
       const sec = $("#new-releases"); if (sec) sec.hidden = fresh.length === 0;
     }
     // catalogue (script.js owns `books` and renderBooks)
     if (typeof books !== "undefined" && typeof renderBooks === "function") {
-      books.splice(0, books.length, ...L.map(b => ({ title: String(b.title || ""), author: String(b.author || ""), genre: String(b.genre || ""), color: pick(b.color, COLORS, "blue"), image: IMG.test(String(b.image || "")) ? b.image : "" })));
+      books.splice(0, books.length, ...L.map(b => ({ title: String(b.title || ""), author: String(b.author || ""), genre: String(b.genre || ""), color: pick(b.color, COLORS, "blue"), image: IMG.test(String(b.image || "")) ? b.image : "", price: Number(b.price) || 0 })));
       const chip = $(".chip.is-active");
       renderBooks(chip ? chip.dataset.genre : "All");
     }
@@ -119,7 +131,7 @@
   }
 
   function apply(c) {
-    [banners, booksSection, authors, publishing, services, process, events, feedback, about, settings].forEach(fn => { try { fn(c); } catch (e) { console.error(fn.name, e); } });
+    [banners, offers, booksSection, authors, publishing, services, process, events, feedback, about, settings].forEach(fn => { try { fn(c); } catch (e) { console.error(fn.name, e); } });
     // keep the menu links and the scroll rails working after the cards were redrawn
     const tag = (sel, ids) => $$(sel).forEach((el, i) => { if (ids[i]) el.id = ids[i]; });
     tag("#publishing .pb-card", ["pub-self", "pub-hybrid", "pub-marketing"]);
