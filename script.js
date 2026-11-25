@@ -128,10 +128,8 @@ form.addEventListener("submit", e => {
     form.querySelector(".invalid input, .invalid select, .invalid textarea").focus();
     return;
   }
-  // Open Gmail with the message ready to send. The recipient is the Email set in the admin (Contact & social),
-  // read from the page's email link, which cms.js keeps in sync with the admin.
-  const mail = document.querySelector('a[href^="mailto:"]');
-  const to = (mail ? mail.getAttribute("href") : "").replace(/^mailto:/i, "").split("?")[0].trim() || "hello@paperbackpublishers.com";
+  // Open Gmail with the message ready to send. Manuscripts always go to this address.
+  const to = "work.paperback@gmail.com";
   const v = n => (form.elements[n] ? form.elements[n].value.trim() : "");
   const subject = "Manuscript submission: " + v("genre") + " \u2013 " + v("name");
   const body = ["Name: " + v("name"), "Email: " + v("email"), "Phone: " + v("phone"), "Genre: " + v("genre"), "", "About the book:", v("message").slice(0, 1200), "", "(Please attach your manuscript file before sending.)"].join("\n");
