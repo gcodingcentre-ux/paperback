@@ -102,8 +102,9 @@ td .cl{max-width:380px;overflow:hidden;text-overflow:ellipsis;display:-webkit-bo
 <div id="toast" hidden></div>
 
 <script>
-/* ===== Login (client-side only: keeps casual visitors out, it is NOT real security) ===== */
-const ADMIN_ID="admin", ADMIN_PW="12345678", KEY="pb_cms_v1", SESS="pb_admin_session";
+/* ===== Login is checked on the server (/api/auth). The token is kept for this tab only. ===== */
+const SESS="pb_admin_token";
+const token=()=>sessionStorage.getItem(SESS)||"";
 
 /* ===== Segments: f = [name,label,type,options]  type: t text | a textarea | s select | n number | d date
    cols = columns shown in the list.  Each segment matches a section of the website. ===== */
@@ -127,7 +128,7 @@ const SEG={
   seed:[{title:"Send your manuscript",text:"Share your draft and a short synopsis. We reply within two weeks."},{title:"Edit together",text:"Your editor returns notes. You approve every change."},{title:"Design and proof",text:"Review the cover and the typeset pages before anything is printed."},{title:"Print and launch",text:"We print, ship and help you plan a launch."}]},
  events:{label:"Events",hint:"Event cards. Add a date or venue in the text when you have one.",cols:["icon","title","text"],f:[["icon","Emoji icon","t"],["title","Title","t"],["text","Description","a"],["date","Date (optional)","d"],["button","Button label","t"],["link","Button link","t"]],
   seed:[{icon:"✍️",title:"Workshops",text:"Hands-on sessions on writing, editing and getting a manuscript ready.",date:"",button:"Ask about workshops",link:"https://wa.me/919000000000"},{icon:"📚",title:"Book launches",text:"Readings, signings and conversations to launch our new titles.",date:"",button:"Ask about launches",link:"https://wa.me/919000000000"},{icon:"🎤",title:"Other events",text:"Author meet-ups, book fair stalls, poetry evenings and school visits.",date:"",button:"Ask about events",link:"https://wa.me/919000000000"}]},
- feedback:{label:"Reader feedback",hint:"Approve to show a message under “What readers say”. Pending messages from this browser's site visits are imported automatically.",cols:["name","rating","message","status"],
+ feedback:{label:"Reader feedback",hint:"Approve to show a message under “What readers say”. New messages from website visitors appear here as “pending”.",cols:["name","rating","message","status"],
   f:[["name","Name","t"],["rating","Rating (1–5)","s",["5","4","3","2","1"]],["message","Message","a"],["date","Date","d"],["status","Status","s",["approved","pending"]]],
   seed:[["Priya Chatterjee",5,"2026-10-12","The Salt Road stayed with me for weeks. The book arrived beautifully packed."],["Rahul Sen",5,"2026-10-28","The editing team improved my manuscript without changing my voice."],["Sanjana Dey",4,"2026-11-03","Bought Little Lantern for my daughter and she asks for it every night."],["Amit Ghosh",5,"2026-11-09","Attended the author reading in Kolkata. Warm and well organised."]].map(x=>({name:x[0],rating:String(x[1]),date:x[2],message:x[3],status:"approved"}))},
  about:{label:"About facts",hint:"Key facts in the About section (e.g. Titles published → 240+).",cols:["label","value"],f:[["label","Label","t"],["value","Value","t"]],
@@ -141,16 +142,31 @@ const $=id=>document.getElementById(id);
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function defaults(){const d={};for(const k in SEG)d[k]=SEG[k].seed.map(x=>({id:uid(),...x}));return d}
-function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(d)return d}catch(e){}return defaults()}
-let DB=load(), cur="banners", editing=null;
-function persist(){try{localStorage.setItem(KEY,JSON.stringify(DB))}catch(e){toast("Could not save in this browser")}}
-function toast(m){const t=$("toast");t.textContent=m;t.hidden=false;clearTimeout(t._t);t._t=setTimeout(()=>t.hidden=true,2200)}
+let DB=defaults(), cur="banners", editing=null;
+function toast(m,ms){const t=$("toast");t.textContent=m;t.hidden=false;clearTimeout(t._t);t._t=setTimeout(()=>t.hidden=true,ms||2200)}
 
-/* pull visitor feedback waiting in this browser (same domain) */
-function importPending(){
-  try{const p=JSON.parse(localStorage.getItem("pb_pending_feedback"))||[];if(!p.length)return;
-    p.forEach(f=>{if(!DB.feedback.some(x=>x.id===f.id))DB.feedback.unshift({id:f.id||uid(),name:f.name,rating:String(f.rating),date:f.date,message:f.message,status:"pending"})});
-    localStorage.removeItem("pb_pending_feedback");persist()}catch(e){}
+/* Every change is sent to the server (Redis). Saves run one after another so they never overwrite each other. */
+let saveChain=Promise.resolve();
+function persist(){
+  const body='{"content":'+JSON.stringify(DB)+'}';
+  saveChain=saveChain
+    .then(()=>fetch("/api/save-content",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+token()},body}))
+    .then(async r=>{
+      if(r.status===401){toast("Session expired. Please log in again.",4000);setTimeout(logout,1500);return}
+      if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||("Error "+r.status))}
+      toast("Saved to website ✓");
+    })
+    .catch(e=>toast("NOT saved: "+e.message,5000));
+  return saveChain;
+}
+
+/* visitor feedback waiting on the server -> shown in the Reader feedback list as "pending" */
+function mergePending(pending){
+  let added=false;
+  (Array.isArray(pending)?pending:[]).forEach(f=>{
+    if(f&&f.id&&!DB.feedback.some(x=>x.id===f.id)){DB.feedback.unshift({id:f.id,name:f.name,rating:String(f.rating),date:f.date,message:f.message,status:"pending"});added=true}
+  });
+  return added;
 }
 
 /* ===== Render ===== */
@@ -226,14 +242,37 @@ $("file").onchange=async e=>{
 $("rs").onclick=()=>{if(confirm("Reset ALL segments to the original website content? Your changes will be lost.")){DB=defaults();persist();render();toast("Reset done")}};
 
 /* ===== Session ===== */
-function enter(){$("login").hidden=true;$("app").hidden=false;importPending();render()}
-$("lf").addEventListener("submit",e=>{
-  e.preventDefault();
-  if($("u").value.trim()===ADMIN_ID&&$("p").value===ADMIN_PW){sessionStorage.setItem(SESS,"1");$("le").textContent="";enter()}
-  else $("le").textContent="Wrong login ID or password."
+function logout(){sessionStorage.removeItem(SESS);location.reload()}
+async function enter(){
+  let d;
+  try{
+    const r=await fetch("/api/get-content?admin=1",{headers:{Authorization:"Bearer "+token()},cache:"no-store"});
+    if(r.status===401){sessionStorage.removeItem(SESS);return false}
+    if(!r.ok)throw new Error("Error "+r.status);
+    d=await r.json();
+  }catch(e){$("le").textContent="Could not load the saved content: "+e.message;return false}
+  const saved=d&&d.content&&typeof d.content==="object"?d.content:null, fresh=defaults();
+  DB={};for(const k in SEG)DB[k]=saved&&Array.isArray(saved[k])?saved[k]:(saved?[]:fresh[k]);
+  for(const k in DB)DB[k].forEach(x=>{if(!x.id)x.id=uid()});
+  const added=mergePending(d&&d.pending);
+  $("login").hidden=true;$("app").hidden=false;render();
+  if(!saved||added)persist();   // first visit: store the starting content; new visitor feedback: mark as received
+  return true;
+}
+$("lf").addEventListener("submit",async e=>{
+  e.preventDefault();$("le").textContent="";
+  const btn=$("lf").querySelector("button");btn.disabled=true;
+  try{
+    const r=await fetch("/api/auth",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:$("u").value.trim(),password:$("p").value})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||!d.token){$("le").textContent=d.error||"Login failed.";return}
+    sessionStorage.setItem(SESS,d.token);
+    await enter();
+  }catch(x){$("le").textContent="Could not reach the server."}
+  finally{btn.disabled=false}
 });
-$("lo").onclick=()=>{sessionStorage.removeItem(SESS);location.reload()};
-if(sessionStorage.getItem(SESS)==="1")enter();
+$("lo").onclick=logout;
+if(token())enter();
 </script>
 </body>
 </html>
