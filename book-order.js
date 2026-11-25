@@ -15,16 +15,17 @@ const BOOK_PRICES = window.PB_PRICES ? Object.assign({}, window.PB_PRICES) : Obj
   const slug = new URLSearchParams(location.search).get("book");
   const price = BOOK_PRICES[slug];
   const info = document.querySelector(".book-info");
-  if (!price || !info || typeof BOOK_DETAILS === "undefined" || !BOOK_DETAILS[slug]) return;
+  if (!info || typeof BOOK_DETAILS === "undefined" || !BOOK_DETAILS[slug]) return;
   const b = BOOK_DETAILS[slug];
   const inr = n => "₹" + n.toLocaleString("en-IN");
+  const hasPrice = price > 0;   // books without a price still get the box, so a coupon works on EVERY book
   let applied = null, final = price;
 
   const box = document.createElement("div");
   box.className = "order-box";
   box.innerHTML = `
     <div class="order-price" aria-live="polite">
-      <span class="now">${inr(price)}</span><s class="was" hidden></s><span class="save" hidden></span>
+      <span class="now">${hasPrice ? inr(price) : "Price on request"}</span><s class="was" hidden></s><span class="save" hidden></span>
     </div>
     <div class="coupon">
       <label for="coupon-input">Have a coupon code?</label>
@@ -44,26 +45,25 @@ const BOOK_PRICES = window.PB_PRICES ? Object.assign({}, window.PB_PRICES) : Obj
   const wa = $(".wa-btn"), msg = $(".coupon-msg"), input = $("#coupon-input");
 
   function render() {
-    const off = price - final;
-    $(".now").textContent = inr(final);
-    $(".was").hidden = $(".save").hidden = !applied;
-    $(".was").textContent = inr(price);
-    $(".save").textContent = applied ? `You save ${inr(off)}` : "";
+    const off = hasPrice ? price - final : 0;
+    $(".now").textContent = hasPrice ? inr(final) : "Price on request";
+    $(".was").hidden = $(".save").hidden = !(applied && hasPrice);
+    $(".was").textContent = hasPrice ? inr(price) : "";
+    $(".save").textContent = applied && hasPrice ? `You save ${inr(off)}` : "";
     let text = `Hello PaperBack Publishers! I would like to order:\n\nBook: ${b.title} by ${b.author}\n`;
-    text += applied
-      ? `Price: ${inr(price)}\nCoupon: ${applied} (-${inr(off)})\nTotal: ${inr(final)}`
-      : `Price: ${inr(price)}`;
+    if (hasPrice) text += applied ? `Price: ${inr(price)}\nCoupon: ${applied} (-${inr(off)})\nTotal: ${inr(final)}` : `Price: ${inr(price)}`;
+    else text += applied ? `Coupon: ${applied}` : "Please share the price.";
     wa.href = `https://wa.me/${window.PB_WA || WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
   }
 
-  const offOf = c => Math.min(price, c.type === "percent" ? Math.round(price * c.value / 100) : c.value);
+  const offOf = c => !hasPrice ? (c.value > 0 ? 1 : 0) : Math.min(price, c.type === "percent" ? Math.round(price * c.value / 100) : c.value);
   // The public offer (if any) and the code the customer typed compete: the bigger saving wins.
-  const pub = (window.PB_OFFERS || []).filter(o => offOf(o) > 0).sort((a, b) => offOf(b) - offOf(a))[0];
+  const pub = (window.PB_OFFERS || []).filter(o => offOf(o) > 0).sort((a, b) => hasPrice ? offOf(b) - offOf(a) : b.value - a.value)[0];
   let typed = null;
   function recompute() {
-    const best = [pub, typed].filter(Boolean).sort((a, b) => offOf(b) - offOf(a))[0];
+    const best = [pub, typed].filter(Boolean).sort((a, b) => hasPrice ? offOf(b) - offOf(a) : 0)[0];
     if (!best) { applied = null; final = price; render(); return; }
-    final = Math.max(0, price - offOf(best)); applied = best.code;
+    final = hasPrice ? Math.max(0, price - offOf(best)) : 0; applied = best.code;
     msg.className = "coupon-msg ok";
     msg.textContent = best === typed ? `Coupon ${best.code} applied.` : (typed ? `Offer ${best.code} gives a better price, so it was kept.` : `Offer ${best.code} applied automatically.`);
     render();
