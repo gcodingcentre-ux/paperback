@@ -8,7 +8,7 @@
 
   Promise.race([get, wait]).then(d => {
     if (d && d.content) {
-      window.PB_OFFERS = (Array.isArray(d.content.coupons) ? d.content.coupons : []).filter(o => o && o.code && Number(o.value) > 0);
+      window.PB_OFFERS = (Array.isArray(d.content.coupons) ? d.content.coupons : []).filter(o => o && o.code && Number(o.value) > 0 && (!o.expires || new Date(Date.now() + 19800000).toISOString().slice(0, 10) <= o.expires));
       const wa = ((d.content.settings || []).find(x => String(x.label).toLowerCase() === "whatsapp number") || {}).value;
       if (wa && String(wa).replace(/\D/g, "").length >= 10) window.PB_WA = String(wa).replace(/\D/g, "");
     }
