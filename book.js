@@ -6,10 +6,12 @@ const esc = x => String(x == null ? "" : x).replace(/[&<>"']/g, c => ({ "&": "&a
 if (book) {
   document.title = book.title + " – PaperBack Publishers";
   page.innerHTML = `
-    <div class="cover c-${esc(book.color)} big-cover" role="img" aria-label="Cover of ${esc(book.title)}">
+    ${book.image
+      ? `<div class="cover has-img big-cover" role="img" aria-label="Cover of ${esc(book.title)}"><img src="${esc(book.image)}" alt="" decoding="async" width="400" height="600"></div>`
+      : `<div class="cover c-${esc(book.color)} big-cover" role="img" aria-label="Cover of ${esc(book.title)}">
       <strong>${esc(book.title)}</strong>
       <span>${esc(book.author)}</span>
-    </div>
+    </div>`}
     <div class="book-info">
       <p class="genre">${esc(book.genre)}</p>
       <h1>${esc(book.title)}</h1>
