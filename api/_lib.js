@@ -3,6 +3,7 @@ const crypto = require("crypto");
 const { Redis } = require("@upstash/redis");
 
 const CONTENT_KEY = "pb:content";            // the whole CMS data (JSON)
+const IMG_PREFIX = "pb:img:";               // one key per uploaded cover image
 const PENDING_KEY = "pb:pending_feedback";   // visitor feedback waiting for approval (list)
 const SEGMENTS = ["banners","books","authors","publishing","services","process","events","feedback","about","settings"];
 
@@ -72,4 +73,4 @@ function fail(res, e) {
   send(res, 500, { error: "Server error. Check the Vercel function logs." });
 }
 
-module.exports = { redis, sign, verify, isAdmin, safeEqual, ip, rateLimit, body, send, fail, CONTENT_KEY, PENDING_KEY, SEGMENTS };
+module.exports = { redis, sign, verify, isAdmin, safeEqual, ip, rateLimit, body, send, fail, CONTENT_KEY, PENDING_KEY, IMG_PREFIX, SEGMENTS };
