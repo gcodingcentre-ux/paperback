@@ -6,7 +6,6 @@
   const section = document.getElementById("submit");
   if (!form || !section) return;
   const DELAY = 5000;
-  const store = { get(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } }, set(k, v) { try { sessionStorage.setItem(k, v); } catch (e) {} } };
 
   const pop = document.createElement("div");
   pop.className = "pb-pop"; pop.setAttribute("role", "dialog"); pop.setAttribute("aria-modal", "true"); pop.setAttribute("aria-labelledby", "pb-pop-t");
@@ -30,7 +29,6 @@
     if (!pop.classList.contains("open")) return;
     pop.classList.remove("open"); document.body.classList.remove("pb-pop-lock");
     home.after(form);                       // back into the page section
-    store.set("pb_pop_seen", "1");
     if (opener && opener.focus) try { opener.focus({ preventScroll: true }); } catch (e) {}
   }
 
@@ -53,11 +51,6 @@
     if (a && !pop.contains(a)) { e.preventDefault(); open(); }
   });
 
-  // after 5 seconds, once per visit (not again after it was closed), and not if the visitor is already at the form
-  setTimeout(() => {
-    if (store.get("pb_pop_seen")) return;
-    const r = section.getBoundingClientRect();
-    if (r.top < innerHeight && r.bottom > 0) return;
-    open();
-  }, DELAY);
+  // 5 seconds after every page load or reload
+  setTimeout(open, DELAY);
 })();
