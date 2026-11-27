@@ -565,7 +565,7 @@ function ordersHTML(){
   <div class="tools"><div class="seg" id="ordtabs">${["","new","confirmed","delivered","cancelled"].map(v=>`<button data-v="${v}" class="${ORD.filter===v?"on":""}">${v?v[0].toUpperCase()+v.slice(1):"All"}</button>`).join("")}</div></div>
   <div class="card tbl" style="margin-bottom:1.2rem"><table><thead><tr><th>Order</th><th>Date</th><th>Customer</th><th>Books</th><th>Coupon</th><th>Total</th><th>Authors emailed</th><th>Status</th></tr></thead><tbody>
   ${rows.map(o=>`<tr><td><b>${esc(o.id)}</b></td><td>${esc(fmt(o.ts))}</td><td>${esc(o.name)}${o.address?`<div class="help">${esc(o.address)}</div>`:""}</td>
-   <td>${o.lines.map(l=>`${l.qty} × ${esc(l.title)} <span class="help" style="display:inline">(${esc(l.author)}: ${inr(l.net)}${l.discount?", −"+inr(l.discount):""})</span>`).join("<br>")}</td>
+   <td>${o.lines.map(l=>`${l.qty} × ${esc(l.title)} <span class="help" style="display:inline">(${esc(l.author)}: ${l.price>0?inr(l.net)+(l.discount?", −"+inr(l.discount):""):"price on request"})</span>`).join("<br>")}</td>
    <td>${o.coupon?`<span class="pill ok">${esc(o.coupon)}</span><div class="help">−${inr(o.discount)}</div>`:"—"}</td><td><b>${inr(o.total)}</b></td>
    <td>${(o.emails||[]).map(e=>`<span class="pill ${e.sent?"ok":"wait"}" title="${esc(e.error||"Sent")}">${esc(e.author)}${e.sent?" ✓":" ✗"}</span>`).join(" ")||"—"}</td>
    <td><select data-ostat="${esc(o.id)}" style="width:auto;padding:.3rem .5rem">${OSTAT.map(x=>`<option ${x===o.status?"selected":""}>${x}</option>`).join("")}</select></td></tr>`).join("")}
