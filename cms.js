@@ -128,6 +128,47 @@
     if (m["address"]) { const p = $(".foot-ext > div:first-child p"); if (p) p.innerHTML = "PaperBack Publishers<br>" + esc(m["address"]); }
     if (m["facebook"]) $$('a[href*="facebook.com"]').forEach(a => { a.href = link(m["facebook"]); });
     if (m["instagram"]) $$('a[href*="instagram.com"]').forEach(a => { a.href = link(m["instagram"]); });
+    siteText(m);
+  }
+
+  // Headings, intros and other wording edited under "Site text" in the admin (stored as extra rows in `settings`).
+  // An empty or missing row leaves the page's built-in wording untouched.
+  function siteText(m) {
+    const put = (key, sel) => { const v = m[key]; if (!v) return; $$(sel).forEach(el => { el.textContent = v; }); };
+    put("hero heading", ".hero-copy h1");
+    put("hero text", ".hero-copy .lead");
+    put("search placeholder (english)", ".sb-ph span:not([lang])");
+    put("search placeholder (bengali)", ".sb-ph span[lang=\"bn\"]");
+    put("new releases heading", "#new-releases .section-head h2");
+    put("catalogue heading", "#catalogue .section-head h2");
+    put("authors heading", "#authors > h2");
+    put("authors intro", "#authors > .pb-lead");
+    put("publishing heading", "#publishing > h2");
+    put("publishing intro", "#publishing > .pb-lead");
+    put("services heading", "#services > h2");
+    put("process heading", "#process > h2");
+    put("events heading", "#events > h2");
+    put("events intro", "#events > .pb-lead");
+    put("feedback heading", "#feedback > h2");
+    put("feedback intro", "#feedback > .pb-lead");
+    put("about heading", "#about > div:first-child h2");
+    put("about text", "#about > div:first-child p");
+    put("submit heading", "#submit > div:first-child h2");
+    put("submit text", "#submit > div:first-child p");
+    put("consultation button label", 'a.btn[href^="tel:"]');
+    put("footer consultation text", ".foot-ext > div:last-child p");
+
+    // Announcement bar above the header
+    const old = $(".pb-announce"); if (old) old.remove();
+    if (m["announcement bar text"]) {
+      const bar = document.createElement("div");
+      bar.className = "pb-announce";
+      bar.setAttribute("style", "background:#1E3A6E;color:#fff;text-align:center;padding:.55rem 1rem;font-size:.95rem;font-weight:500");
+      const u = m["announcement bar link"];
+      if (u) { const a = document.createElement("a"); a.href = link(u); a.textContent = m["announcement bar text"]; a.setAttribute("style", "color:#fff;text-decoration:underline"); bar.append(a); }
+      else bar.textContent = m["announcement bar text"];
+      document.body.insertBefore(bar, document.body.firstChild);
+    }
   }
 
   function apply(c) {
