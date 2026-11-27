@@ -156,7 +156,7 @@
     put("submit heading", "#submit > div:first-child h2");
     put("submit text", "#submit > div:first-child p");
     put("consultation button label", 'a.btn[href^="tel:"]');
-    put("footer consultation text", ".foot-ext > div:last-child p");
+    put("footer consultation text", ".foot-ext > div:nth-child(4) p");
 
     // Announcement bar above the header
     const old = $(".pb-announce"); if (old) old.remove();
