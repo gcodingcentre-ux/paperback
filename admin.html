@@ -221,9 +221,9 @@ const SEG={
  books:{label:"Books",single:"book",hint:"The catalogue and each book's landing page. Set “New release” to Yes to show it under New releases. A price enables ordering and coupons on the book page.",cols:["image","title","author","genre","price","isNew"],
   f:[["image","Cover image","i",null,null,1],["title","Title","t",null,"The book page address is made from the title.",1],["author","Author","t"],["genre","Genre","s",GENRES],["color","Cover colour (used when there is no image)","s",COLORS],["isNew","New release?","s",["No","Yes"]],["price","Price (₹, optional)","n"],["summary","Summary","a",null,"Shown on the book's own page.",1],["bio","About the author","a",null,"If empty, the matching Author's bio is used.",1]],
   seed:[["The Salt Road","Meera Sengupta","Fiction","blue","Yes"],["Monsoon Ledger","Arjun Dutta","Fiction","green","Yes"],["Quiet Algorithms","Ritika Bose","Non-fiction","navy","Yes"],["Rivers of Kolkata","Sourav Mitra","Non-fiction","moss","No"],["Little Lantern","Ananya Roy","Children","green","Yes"],["Counting Stars at Noon","Tanmoy Paul","Children","blue","No"],["Notes from a Tea Garden","Isha Banerjee","Poetry","navy","No"],["Ink & Alum","Kabir Chanda","Poetry","moss","No"]].map(b=>({title:b[0],author:b[1],genre:b[2],color:b[3],isNew:b[4],price:"",summary:"",bio:"",image:""}))},
- authors:{label:"Authors",single:"author",hint:"Author cards in “Our authors”.",cols:["name","book","genre","bio"],
-  f:[["name","Name","t"],["book","Known for (book)","t"],["genre","Genre","s",GENRES],["bio","Short bio","a",null,null,1]],
-  seed:[["Meera Sengupta","The Salt Road","Fiction","Grew up in Howrah and worked as a journalist for twelve years before turning to fiction."],["Arjun Dutta","Monsoon Ledger","Fiction","A chartered accountant and short-story writer whose work has appeared in Bengali and English magazines."],["Ritika Bose","Quiet Algorithms","Non-fiction","A data scientist and writer who teaches at a university in West Bengal."],["Sourav Mitra","Rivers of Kolkata","Non-fiction","An urban historian and walking-tour guide who has spent two decades mapping Kolkata's canals."],["Ananya Roy","Little Lantern","Children","A primary school teacher who writes the stories she wishes she had to read aloud in class."],["Isha Banerjee","Notes from a Tea Garden","Poetry","Grew up on a tea estate in the Darjeeling hills and now teaches literature."]].map(a=>({name:a[0],book:a[1],genre:a[2],bio:a[3]}))},
+ authors:{label:"Authors",single:"author",hint:"Author cards in “Our authors”.",cols:["name","book","genre","email"],
+  f:[["name","Name","t",null,"Must match the author name on the author's books, so order emails reach the right person."],["email","Email (private)","t",null,"Never shown on the website. The author gets an email for every order that includes their books, with the coupon discount shown."],["book","Known for (book)","t"],["genre","Genre","s",GENRES],["bio","Short bio","a",null,null,1]],
+  seed:[["Meera Sengupta","The Salt Road","Fiction","Grew up in Howrah and worked as a journalist for twelve years before turning to fiction."],["Arjun Dutta","Monsoon Ledger","Fiction","A chartered accountant and short-story writer whose work has appeared in Bengali and English magazines."],["Ritika Bose","Quiet Algorithms","Non-fiction","A data scientist and writer who teaches at a university in West Bengal."],["Sourav Mitra","Rivers of Kolkata","Non-fiction","An urban historian and walking-tour guide who has spent two decades mapping Kolkata's canals."],["Ananya Roy","Little Lantern","Children","A primary school teacher who writes the stories she wishes she had to read aloud in class."],["Isha Banerjee","Notes from a Tea Garden","Poetry","Grew up on a tea estate in the Darjeeling hills and now teaches literature."]].map(a=>({name:a[0],email:"",book:a[1],genre:a[2],bio:a[3]}))},
  publishing:{label:"Publishing plans",single:"plan",hint:"The cards in “Publishing with us”. Put one bullet point per line.",cols:["title","tag","text"],
   f:[["tag","Tag line","t"],["title","Plan name","t"],["text","Description","a",null,null,1],["points","Bullet points (one per line)","a",null,null,1]],
   seed:[{tag:"You lead",title:"Self-publishing",text:"You keep full control and full rights. We provide the services you choose.",points:"Pick only the services you need\nYou own your rights and set your price\nPrint runs from 100 copies"},{tag:"We share the work",title:"Hybrid publishing",text:"A partnership: you contribute to the production cost, and we bring our editors, designers and distribution network.",points:"Professional editing and design included\nBookshop and library distribution\nHigher royalty share than traditional deals"},{tag:"Get it read",title:"Marketing",text:"We plan the launch, set up your author page and help you reach reviewers, bookshops and local media.",points:"Launch plan and author profile\nSocial media and press outreach\nBook launch and event support"}]},
@@ -256,8 +256,8 @@ const TEXTS=[
 ];
 const CONTACT=[["Phone","Phone number","t","+91 90000 00000","Used for call links and the footer."],["WhatsApp number","WhatsApp number","t","919000000000","Country code + number, digits only (e.g. 919876543210)."],["Email","Email address","t","hello@paperbackpublishers.com",""],["Address","Address","t","Kolkata, West Bengal, India","Shown in the footer under PaperBack Publishers."],["Facebook","Facebook page link","t","https://www.facebook.com/…",""],["Instagram","Instagram page link","t","https://www.instagram.com/…",""]];
 
-const GROUPS=[["",["dash"]],["Home page",["banners","text","books"]],["People",["authors"]],["Business",["publishing","services","process","events","about"]],["Visitors",["feedback","coupons"]],["Site settings",["settings"]]];
-const VIEWS={dash:"Overview",text:"Site text"};
+const GROUPS=[["",["dash"]],["Home page",["banners","text","books"]],["People",["authors"]],["Business",["publishing","services","process","events","about"]],["Sales",["orders"]],["Visitors",["feedback","coupons"]],["Site settings",["settings"]]];
+const VIEWS={dash:"Overview",text:"Site text",orders:"Orders & sales"};
 const labelOf=k=>VIEWS[k]||SEG[k].label;
 
 /* ===== Helpers ===== */
@@ -315,6 +315,7 @@ function mergePending(pending){
 const couponState=c=>c.active==="No"?"off":(c.expires&&today()>c.expires?"expired":"live");
 const pendingCount=()=>DB.feedback.filter(f=>f.status==="pending").length;
 function badge(k){
+  if(k==="orders"){const n=ORD.list.filter(o=>o.status==="new").length;return n?`<b class="alert" title="${n} new">${n}</b>`:""}
   if(k==="feedback"){const n=pendingCount();return n?`<b class="alert" title="${n} waiting for approval">${n}</b>`:`<b>${DB.feedback.length}</b>`}
   if(SEG[k]&&Array.isArray(DB[k])&&k!=="settings")return `<b>${DB[k].length}</b>`;
   return "";
@@ -334,6 +335,7 @@ function render(){
   if(cur==="dash")v.innerHTML=dashHTML();
   else if(cur==="text")v.innerHTML=textHTML();
   else if(cur==="settings")v.innerHTML=contactHTML();
+  else if(cur==="orders"){v.innerHTML=ordersHTML();if(!ORD.loaded)loadOrders()}
   else{v.innerHTML=listShell();renderList()}
 }
 
@@ -353,6 +355,8 @@ function health(){
   add(ex===0,ex?`${ex} expired coupon${ex>1?"s":""} still listed`:"No expired coupons","coupons","Tidy");
   const dup=new Set(),d=[];B.forEach(b=>{const s=slug(b.title);if(dup.has(s))d.push(b.title);dup.add(s)});
   add(d.length===0,d.length?`Two books share the same title: ${d.join(", ")}`:"All book titles are unique","books","Fix");
+  const ne=DB.authors.filter(x=>!String(x.email||"").trim()).length;
+  add(ne===0,ne?`${ne} author${ne>1?"s have":" has"} no email, so they cannot be notified of orders`:"Every author has an email for order notifications","authors","Fix");
   const phone=getS("Phone"),mail=getS("Email");
   add(!!(phone&&mail),(phone&&mail)?"Contact details are filled in":"Phone or email is missing","settings","Open");
   return items;
@@ -366,7 +370,7 @@ function dashHTML(){
   <p class="hint">Everything here controls the live website. Changes save automatically and appear on the site within about a minute.</p>
   <div class="stats">
    ${stat("books","Books",DB.books.length)}${stat("books","New releases",DB.books.filter(b=>b.isNew==="Yes").length)}${stat("authors","Authors",DB.authors.length)}
-   ${stat("feedback","Pending feedback",pendingCount(),pendingCount()>0)}${stat("coupons","Live coupons",live)}${stat("banners","Banners",DB.banners.length)}
+   ${stat("orders","New orders",ORD.list.filter(o=>o.status==="new").length,ORD.list.some(o=>o.status==="new"))}${stat("feedback","Pending feedback",pendingCount(),pendingCount()>0)}${stat("coupons","Live coupons",live)}${stat("banners","Banners",DB.banners.length)}
   </div>
   <div class="grid2">
    <div class="card pad"><h3>Needs attention</h3><ul class="chk">${hs.map(i=>`<li class="${i.ok?"good":"warn"}"><div class="ic">${i.ok?"✓":"!"}</div><span>${esc(i.txt)}</span>${i.ok?"":`<button class="btn o s" data-go="${i.go}">${i.btn}</button>`}</li>`).join("")}</ul></div>
@@ -436,6 +440,7 @@ function cell(name,v,r){
   if(name==="status")return `<span class="pill ${v==="approved"?"ok":"wait"}">${esc(v)}</span>`;
   if(name==="state"){const st=couponState(r);return `<span class="pill ${st==="live"?"ok":st==="off"?"off":"bad"}">${st==="live"?"Live":st==="off"?"Off":"Expired"}</span>`}
   if(name==="show")return v==="Yes"?`<span class="pill ok">On site</span>`:`<span class="pill off">Private</span>`;
+  if(name==="email")return v?esc(v):`<span class="pill wait">No email</span>`;
   if(name==="isNew")return v==="Yes"?`<span class="pill ok">New</span>`:"";
   if(name==="rating"){const n=Math.min(5,Math.max(0,parseInt(v,10)||0));return `<span style="color:var(--amber);white-space:nowrap">${"★".repeat(n)+"☆".repeat(5-n)}</span>`}
   if(name==="color")return `<span class="swatch" style="background:${SWATCH[v]||"#ccc"}"></span>${esc(v)}`;
@@ -529,6 +534,66 @@ function bulk(a){
   toast("Updated "+ids.length);persist();render();
 }
 
+
+/* ===== Orders & sales (orders come from the website cart: /api/orders) ===== */
+const ORD={list:[],loaded:false,err:"",filter:"",open:null};
+const OSTAT=["new","confirmed","delivered","cancelled"];
+const inr=n=>"₹"+Number(n||0).toLocaleString("en-IN");
+async function loadOrders(){
+  try{
+    const r=await fetch("/api/orders",{headers:{Authorization:"Bearer "+token()},cache:"no-store"});
+    if(r.status===401){toast("Session expired. Please log in again.",4000,1);return setTimeout(logout,1500)}
+    if(!r.ok)throw new Error("Error "+r.status);
+    ORD.list=(await r.json()).orders||[];ORD.err="";
+  }catch(e){ORD.err="Could not load orders: "+e.message}
+  ORD.loaded=true;nav();if(cur==="orders")$("view").innerHTML=ordersHTML();
+}
+const counted=o=>o.status==="confirmed"||o.status==="delivered";
+function ordersHTML(){
+  if(!ORD.loaded)return `<div class="head"><h2>Orders &amp; sales</h2></div><div class="empty">Loading orders…</div>`;
+  const all=ORD.list,sold=all.filter(counted);
+  const copies=sold.reduce((a,o)=>a+o.lines.reduce((x,l)=>x+l.qty,0),0),rev=sold.reduce((a,o)=>a+o.total,0),disc=sold.reduce((a,o)=>a+o.discount,0);
+  const stat=(l,v,w)=>`<div class="stat ${w?"warn":""}" style="cursor:default"><span>${l}</span><b>${v}</b></div>`;
+  const per={};
+  sold.forEach(o=>o.lines.forEach(l=>{const k=l.author||"(unknown)";const a=per[k]=per[k]||{copies:0,gross:0,disc:0,net:0,books:{}};a.copies+=l.qty;a.gross+=l.price*l.qty;a.disc+=l.discount;a.net+=l.net;const b=a.books[l.title]=a.books[l.title]||{copies:0,net:0};b.copies+=l.qty;b.net+=l.net}));
+  const rows=all.filter(o=>!ORD.filter||o.status===ORD.filter);
+  const fmt=t=>new Date(t).toLocaleString("en-IN",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});
+  return `<div class="head"><h2>Orders &amp; sales</h2><div class="top-r"><button class="btn o" id="ord-csv">⤓ Export CSV</button><button class="btn o" id="ord-ref">↻ Refresh</button></div></div>
+  <p class="hint">Every order placed from the website cart appears here, with the coupon discount worked out per book. Mark an order <b>Confirmed</b> once payment is received: only confirmed and delivered orders count as copies sold. Authors are emailed automatically when an order comes in.</p>
+  ${ORD.err?`<div class="card pad err">${esc(ORD.err)}</div>`:""}
+  <div class="stats">${stat("New orders",all.filter(o=>o.status==="new").length,all.some(o=>o.status==="new"))}${stat("Copies sold",copies)}${stat("Sales value",inr(rev))}${stat("Discounts given",inr(disc))}</div>
+  <div class="tools"><div class="seg" id="ordtabs">${["","new","confirmed","delivered","cancelled"].map(v=>`<button data-v="${v}" class="${ORD.filter===v?"on":""}">${v?v[0].toUpperCase()+v.slice(1):"All"}</button>`).join("")}</div></div>
+  <div class="card tbl" style="margin-bottom:1.2rem"><table><thead><tr><th>Order</th><th>Date</th><th>Customer</th><th>Books</th><th>Coupon</th><th>Total</th><th>Authors emailed</th><th>Status</th></tr></thead><tbody>
+  ${rows.map(o=>`<tr><td><b>${esc(o.id)}</b></td><td>${esc(fmt(o.ts))}</td><td>${esc(o.name)}${o.address?`<div class="help">${esc(o.address)}</div>`:""}</td>
+   <td>${o.lines.map(l=>`${l.qty} × ${esc(l.title)} <span class="help" style="display:inline">(${esc(l.author)}: ${inr(l.net)}${l.discount?", −"+inr(l.discount):""})</span>`).join("<br>")}</td>
+   <td>${o.coupon?`<span class="pill ok">${esc(o.coupon)}</span><div class="help">−${inr(o.discount)}</div>`:"—"}</td><td><b>${inr(o.total)}</b></td>
+   <td>${(o.emails||[]).map(e=>`<span class="pill ${e.sent?"ok":"wait"}" title="${esc(e.error||"Sent")}">${esc(e.author)}${e.sent?" ✓":" ✗"}</span>`).join(" ")||"—"}</td>
+   <td><select data-ostat="${esc(o.id)}" style="width:auto;padding:.3rem .5rem">${OSTAT.map(x=>`<option ${x===o.status?"selected":""}>${x}</option>`).join("")}</select></td></tr>`).join("")}
+  </tbody></table>${rows.length?"":`<div class="empty">${all.length?"No orders with this status.":"No orders yet. They appear here when customers use the cart."}</div>`}</div>
+  <div class="card pad"><h3>Copies sold by author</h3><p class="hint" style="margin-bottom:.8rem">Confirmed and delivered orders only. Net = what customers paid after coupons.</p>
+  ${Object.keys(per).length?`<div class="tbl"><table><thead><tr><th>Author</th><th>Book</th><th>Copies</th><th>Net sales</th></tr></thead><tbody>${Object.keys(per).sort().map(k=>Object.keys(per[k].books).map((t,i)=>`<tr><td>${i?"":`<b>${esc(k)}</b>`}</td><td>${esc(t)}</td><td>${per[k].books[t].copies}</td><td>${inr(per[k].books[t].net)}</td></tr>`).join("")+`<tr style="background:#f8faff"><td></td><td><b>Total for ${esc(k)}</b></td><td><b>${per[k].copies}</b></td><td><b>${inr(per[k].net)}</b> <span class="help" style="display:inline">(list ${inr(per[k].gross)}, discounts −${inr(per[k].disc)})</span></td></tr>`).join("")}</tbody></table></div>`:`<div class="empty">Nothing confirmed yet.</div>`}</div>`;
+}
+document.addEventListener("click",e=>{
+  if(e.target.id==="ord-ref"){ORD.loaded=false;$("view").innerHTML=ordersHTML();loadOrders()}
+  const t=e.target.closest("#ordtabs button");if(t){ORD.filter=t.dataset.v;$("view").innerHTML=ordersHTML()}
+  if(e.target.id==="ord-csv"){
+    const q=v=>'"'+String(v??"").replace(/"/g,'""')+'"';
+    const out=[["Order","Date","Status","Customer","Book","Author","Copies","List price each","Discount","Net","Coupon"].map(q).join(",")];
+    ORD.list.forEach(o=>o.lines.forEach(l=>out.push([o.id,new Date(o.ts).toISOString().slice(0,10),o.status,o.name,l.title,l.author,l.qty,l.price,l.discount,l.net,o.coupon].map(q).join(","))));
+    download("orders-"+today()+".csv","\ufeff"+out.join("\n"),"text/csv");
+  }
+});
+document.addEventListener("change",async e=>{
+  const id=e.target.dataset&&e.target.dataset.ostat;if(!id)return;
+  const o=ORD.list.find(x=>x.id===id),prev=o.status,v=e.target.value;o.status=v;
+  try{
+    const r=await fetch("/api/orders",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token()},body:JSON.stringify({id,status:v})});
+    if(!r.ok)throw new Error((await r.json().catch(()=>({}))).error||"Error "+r.status);
+    toast("Order "+id+" marked "+v);
+  }catch(x){o.status=prev;toast("Not changed: "+x.message,4000,1)}
+  $("view").innerHTML=ordersHTML();nav();
+});
+
 /* ===== Add / edit ===== */
 function openForm(id){
   const s=SEG[cur];editing=id;const r=id?DB[cur].find(x=>x.id===id):{};
@@ -619,6 +684,7 @@ $("mf").addEventListener("submit",e=>{
     if(!(val>0)||(d.type==="percent"&&val>100)||val>100000){toast("Discount must be 1–100 for percent, or rupees above 0",4000,1);return}
     d.code=code;
   }
+  if(cur==="authors"&&d.email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email.trim())){toast("That email address does not look right",4000,1);return}
   if(cur==="books"&&DB.books.some(b=>b.id!==editing&&slug(b.title)===slug(d.title))){toast("Another book already has this title (the book page address would clash)",4500,1);return}
   if(cur==="events"&&d.link&&!/^(#|\/|https?:\/\/|mailto:|tel:)/i.test(d.link.trim())){toast("Button link must start with https://, #, mailto: or tel:",4500,1);return}
   if(cur==="banners"&&d.link&&!/^(#|\/|https?:\/\/|mailto:|tel:)/i.test(d.link.trim())){toast("Button link must start with https://, #, mailto: or tel:",4500,1);return}
@@ -638,7 +704,7 @@ addEventListener("keydown",e=>{
 /* ===== Backup, import, export ===== */
 function download(name,text,type){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),500)}
 $("dl").onclick=()=>{
-  const out={...DB};out.feedback=DB.feedback.filter(f=>f.status==="approved");
+  const out={...DB};out.feedback=DB.feedback.filter(f=>f.status==="approved");out.authors=DB.authors.map(({email,...a})=>a);
   download("site-content.js","// Generated by the PaperBack admin dashboard. Upload this file next to index.html.\nwindow.SITE_CONTENT = "+JSON.stringify(out,null,2)+";\n","text/javascript");toast("site-content.js downloaded");
 };
 $("ex").onclick=()=>{download("paperback-backup-"+today()+".json",JSON.stringify(DB,null,2),"application/json");toast("Backup downloaded")};
@@ -668,7 +734,7 @@ async function enter(){
   for(const k in DB)DB[k].forEach(x=>{if(!x.id)x.id=uid()});
   lastGood=saved?JSON.stringify(DB):"";
   const added=mergePending(d&&d.pending);
-  $("login").hidden=true;$("app").hidden=false;render();
+  $("login").hidden=true;$("app").hidden=false;render();loadOrders();
   if(!saved||added||!Array.isArray(saved.coupons))persist();   // first visit: store the starting content; new visitor feedback: mark as received
   return true;
 }
