@@ -43,8 +43,6 @@
 .cart-done h3{font-size:1.6rem;color:var(--blue-deep);margin-bottom:.6rem}
 .cart-done .btn{margin-top:.8rem}
 /* buttons added to book cards / book page */
-.cart-quick{display:block;margin:.5rem 0 0;border:2px solid var(--blue);background:#fff;color:var(--blue-deep);font:700 .85rem var(--sans);padding:.35rem .9rem;border-radius:999px;cursor:pointer;transition:background .2s,color .2s}
-.cart-quick:hover{background:var(--blue-deep);border-color:var(--blue-deep);color:#fff}
 .order-box.has-cart .wa-btn{display:none}
 .order-box .cart-row{display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.9rem}
 .order-box .cart-add,.order-box .cart-buy{flex:1;min-width:150px;border-radius:999px;font:700 1rem var(--sans);padding:.8rem 1rem;cursor:pointer;border:2px solid var(--blue-deep)}
