@@ -26,7 +26,7 @@ function linesTable(lines) {
   const th = "padding:8px 10px;text-align:left;background:#EAF0FB;color:#1E3A6E;font-size:12px;text-transform:uppercase";
   const td = "padding:8px 10px;border-bottom:1px solid #e3e9f3";
   return `<table style="border-collapse:collapse;width:100%;font:14px Arial,sans-serif"><tr><th style="${th}">Book</th><th style="${th}">Copies</th><th style="${th}">List price</th><th style="${th}">Coupon discount</th><th style="${th}">Net amount</th></tr>` +
-    lines.map(l => `<tr><td style="${td}">${esc(l.title)}</td><td style="${td}">${l.qty}</td><td style="${td}">${inr(l.price * l.qty)}</td><td style="${td}">${l.discount ? "\u2212" + inr(l.discount) : "\u2014"}</td><td style="${td}"><b>${inr(l.net)}</b></td></tr>`).join("") + "</table>";
+    lines.map(l => `<tr><td style="${td}">${esc(l.title)}</td><td style="${td}">${l.qty}</td><td style="${td}">${l.price > 0 ? inr(l.price * l.qty) : "Price on request"}</td><td style="${td}">${l.discount ? "\u2212" + inr(l.discount) : "\u2014"}</td><td style="${td}"><b>${l.price > 0 ? inr(l.net) : "To be confirmed"}</b></td></tr>`).join("") + "</table>";
 }
 
 function authorMail(o, authorName, lines) {
