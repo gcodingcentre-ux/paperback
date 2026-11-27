@@ -16,6 +16,8 @@ module.exports = async (req, res) => {
     if (content && Array.isArray(content.feedback)) {
       content.feedback = content.feedback.filter(f => f.status === "approved");
     }
+    // Author e-mail addresses (used for order notifications) are private: never sent to visitors.
+    if (content && Array.isArray(content.authors)) content.authors = content.authors.map(a => { const { email, ...rest } = a || {}; return rest; });
     // Visitors only ever get the offers marked "Show on website"; private codes stay on the server.
     if (content) content.coupons = (Array.isArray(content.coupons) ? content.coupons : [])
       .filter(c => L.couponLive(c) && c.show === "Yes")
