@@ -12,8 +12,9 @@ function discountFor(c, lines, subtotal) {
   if (!c || subtotal <= 0) return lines.map(() => 0);
   if (c.type === "percent") return lines.map(l => Math.round(l.price * l.qty * Math.min(100, c.value) / 100));
   const total = Math.min(subtotal, Number(c.value) || 0);
-  let left = total;
-  return lines.map((l, i) => { const d = i === lines.length - 1 ? left : Math.min(left, Math.round(total * (l.price * l.qty) / subtotal)); left -= d; return d; });
+  let left = total, last = -1;
+  lines.forEach((l, i) => { if (l.price > 0) last = i; });
+  return lines.map((l, i) => { if (!(l.price > 0)) return 0; const d = i === last ? left : Math.min(left, Math.round(total * (l.price * l.qty) / subtotal)); left -= d; return d; });
 }
 
 module.exports = async (req, res) => {
@@ -35,8 +36,8 @@ module.exports = async (req, res) => {
     const lines = [];
     for (const [s, qty] of merged) {
       const bk = books.find(x => slug(x.title) === s);
-      const price = bk ? Number(bk.price) : 0;
-      if (!bk || !(price > 0)) return L.send(res, 400, { error: "A book in your cart is no longer available for ordering. Please refresh the page." });
+      const price = bk && Number(bk.price) > 0 ? Number(bk.price) : 0;   // 0 = "price on request", confirmed on WhatsApp
+      if (!bk) return L.send(res, 400, { error: "A book in your cart is no longer available for ordering. Please refresh the page." });
       lines.push({ slug: s, title: String(bk.title), author: String(bk.author || ""), qty, price, discount: 0, net: 0 });
     }
     const subtotal = lines.reduce((a, l) => a + l.price * l.qty, 0);
@@ -74,12 +75,17 @@ module.exports = async (req, res) => {
     await L.redis().lpush(ORDERS_KEY, order);
     await L.redis().ltrim(ORDERS_KEY, 0, 1999);
 
+    const quote = lines.some(l => !(l.price > 0));
     let text = `Hello PaperBack Publishers! I would like to place order ${order.id}:\n\n` +
-      lines.map(l => `${l.qty} x ${l.title} by ${l.author} = ${M.inr(l.price * l.qty)}`).join("\n") + `\n\nSubtotal: ${M.inr(subtotal)}`;
-    if (discount) text += `\nCoupon ${order.coupon}: -${M.inr(discount)}`;
-    text += `\nTotal: ${M.inr(order.total)}\n\nName: ${name}` + (address ? `\nAddress: ${address}` : "") + (note ? `\nNote: ${note}` : "");
+      lines.map(l => `${l.qty} x ${l.title} by ${l.author} = ${l.price > 0 ? M.inr(l.price * l.qty) : "price on request"}`).join("\n");
+    if (subtotal > 0) {
+      text += `\n\nSubtotal: ${M.inr(subtotal)}`;
+      if (discount) text += `\nCoupon ${order.coupon}: -${M.inr(discount)}`;
+      text += `\nTotal: ${M.inr(order.total)}` + (quote ? " (plus books on request)" : "");
+    } else text += "\n\nPlease share the price.";
+    text += `\n\nName: ${name}` + (address ? `\nAddress: ${address}` : "") + (note ? `\nNote: ${note}` : "");
     const waRow = (Array.isArray(content.settings) ? content.settings : []).find(x => String(x.label).trim().toLowerCase() === "whatsapp number");
     const wa = waRow ? String(waRow.value || "").replace(/\D/g, "") : "";
-    return L.send(res, 200, { id: order.id, lines, subtotal, discount, total: order.total, coupon: order.coupon, text, wa: wa.length >= 10 ? wa : "" });
+    return L.send(res, 200, { id: order.id, lines, subtotal, discount, total: order.total, coupon: order.coupon, quote, text, wa: wa.length >= 10 ? wa : "" });
   } catch (e) { L.fail(res, e); }
 };
