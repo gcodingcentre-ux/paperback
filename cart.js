@@ -18,7 +18,8 @@
     if (!c || subtotal <= 0) return lines.map(() => 0);
     if (c.type === "percent") return lines.map(l => Math.round(l.price * l.qty * Math.min(100, c.value) / 100));
     const total = Math.min(subtotal, Number(c.value) || 0); let left = total;
-    return lines.map((l, i) => { const d = i === lines.length - 1 ? left : Math.min(left, Math.round(total * l.price * l.qty / subtotal)); left -= d; return d; });
+    let last = -1; lines.forEach((l, i) => { if (l.price > 0) last = i; });
+    return lines.map((l, i) => { if (!(l.price > 0)) return 0; const d = i === last ? left : Math.min(left, Math.round(total * l.price * l.qty / subtotal)); left -= d; return d; });
   }
   function compute() {
     const lines = cart.filter(i => catalog[i.slug]).map(i => ({ slug: i.slug, qty: i.qty, title: catalog[i.slug].title, author: catalog[i.slug].author, price: catalog[i.slug].price, discount: 0, net: 0 }));
@@ -27,7 +28,7 @@
     [typed, ...offers].filter(Boolean).forEach(c => { const s = discounts(c, lines, subtotal).reduce((a, x) => a + x, 0); if (s > bestSave) { best = c; bestSave = s; } });
     const d = discounts(best, lines, subtotal);
     lines.forEach((l, i) => { l.discount = d[i]; l.net = l.price * l.qty - d[i]; });
-    return { lines, subtotal, discount: lines.reduce((a, l) => a + l.discount, 0), total: subtotal - lines.reduce((a, l) => a + l.discount, 0), coupon: best ? best.code : "" };
+    return { lines, subtotal, discount: lines.reduce((a, l) => a + l.discount, 0), total: subtotal - lines.reduce((a, l) => a + l.discount, 0), coupon: best ? best.code : "", quote: lines.some(l => !(l.price > 0)) };
   }
   const count = () => cart.reduce((a, i) => a + i.qty, 0);
 
@@ -65,9 +66,9 @@
     const keep = { name: ($("#ct-name", dr) || {}).value || "", addr: ($("#ct-addr", dr) || {}).value || "", note: ($("#ct-note", dr) || {}).value || "", cp: ($("#ct-cp", dr) || {}).value || "" };
     dr.innerHTML = `<div class="cart-head"><h2>Your cart (${count()})</h2><button class="cart-x" aria-label="Close">&times;</button></div>
     <div class="cart-body">
-      ${p.lines.map(l => `<div class="ci"><div><b>${esc(l.title)}</b><small>${esc(l.author)} · ${inr(l.price)} each</small>
+      ${p.lines.map(l => `<div class="ci"><div><b>${esc(l.title)}</b><small>${esc(l.author)} · ${l.price > 0 ? inr(l.price) + " each" : "Price on request"}</small>
         <div class="ctl"><button data-q="-1" data-s="${esc(l.slug)}" aria-label="Fewer">&minus;</button><span>${l.qty}</span><button data-q="1" data-s="${esc(l.slug)}" aria-label="More">+</button><button class="rm" data-rm="${esc(l.slug)}">Remove</button></div></div>
-        <div class="pr">${l.discount ? `<s>${inr(l.price * l.qty)}</s>` : ""}${inr(l.net)}</div></div>`).join("")}
+        <div class="pr">${l.price > 0 ? (l.discount ? `<s>${inr(l.price * l.qty)}</s>` : "") + inr(l.net) : "On request"}</div></div>`).join("")}
       <div class="cart-box">
         <label for="ct-cp">Coupon code</label>
         <div class="cp-row"><input id="ct-cp" autocomplete="off" autocapitalize="characters" placeholder="Enter code" value="${esc(keep.cp)}"><button type="button" id="ct-apply">Apply</button></div>
@@ -78,9 +79,10 @@
       </div>
     </div>
     <div class="cart-foot">
-      <div class="tot"><span>Subtotal</span><span>${inr(p.subtotal)}</span></div>
+      ${p.subtotal > 0 ? `<div class="tot"><span>Subtotal</span><span>${inr(p.subtotal)}</span></div>` : ""}
       ${p.discount ? `<div class="tot save"><span>Coupon ${esc(p.coupon)}</span><span>&minus;${inr(p.discount)}</span></div>` : ""}
-      <div class="tot big"><span>Total</span><span>${inr(p.total)}</span></div>
+      <div class="tot big"><span>Total${p.quote ? " (priced books)" : ""}</span><span>${p.subtotal > 0 ? inr(p.total) : "To be confirmed"}</span></div>
+      ${p.quote ? `<p class="cart-note" style="margin:-.4rem 0 .7rem">Books marked “price on request” are not in this total. We will share their price on WhatsApp.</p>` : ""}
       <div class="cart-err" id="ct-err" aria-live="polite">${esc(msg || "")}</div>
       <button class="cart-go" id="ct-go" type="button"><svg viewBox="0 0 32 32" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M16.04 3C9.4 3 4 8.38 4 15.02c0 2.12.55 4.19 1.6 6.01L4 28l7.15-1.87a12 12 0 0 0 4.89 1.04C22.68 27.17 28 21.8 28 15.16 28 8.5 22.68 3 16.04 3zm0 21.9c-1.5 0-2.97-.4-4.25-1.16l-.3-.18-4.24 1.11 1.13-4.13-.2-.32a9.9 9.9 0 0 1-1.52-5.2c0-5.5 4.5-9.97 10-9.97s10.02 4.47 10.02 9.97-4.5 9.88-10.02 9.88zm5.5-7.44c-.3-.15-1.78-.88-2.06-.98-.28-.1-.48-.15-.68.15-.2.3-.78.98-.96 1.18-.18.2-.35.22-.65.07-.3-.15-1.27-.47-2.42-1.5-.9-.8-1.5-1.78-1.67-2.08-.18-.3-.02-.46.13-.6.13-.14.3-.35.45-.52.15-.18.2-.3.3-.5.1-.2.05-.38-.02-.53-.08-.15-.68-1.64-.93-2.25-.24-.58-.5-.5-.68-.5h-.58c-.2 0-.53.08-.8.38-.28.3-1.05 1.03-1.05 2.5s1.08 2.9 1.23 3.1c.15.2 2.1 3.2 5.08 4.48.7.3 1.26.48 1.7.62.72.23 1.37.2 1.88.12.57-.08 1.78-.73 2.03-1.43.25-.7.25-1.3.18-1.43-.08-.13-.28-.2-.58-.35z"/></svg>Order on WhatsApp</button>
       <p class="cart-note">Your order is saved and the authors are notified with the exact price and coupon discount. We confirm payment and delivery with you on WhatsApp.</p>
@@ -129,7 +131,7 @@
       if (r.ok && j.text) { res = j; text = j.text; id = j.id; recorded = true; if (j.wa) wa = j.wa; }
     } catch (e) { /* network problem: still let the customer order on WhatsApp below */ }
     if (!res) {   // fallback so a customer is never blocked; this order is not saved on the server
-      text = "Hello PaperBack Publishers! I would like to order:\n\n" + p.lines.map(l => `${l.qty} x ${l.title} by ${l.author} = ${inr(l.price * l.qty)}`).join("\n") + `\n\nSubtotal: ${inr(p.subtotal)}` + (p.discount ? `\nCoupon ${p.coupon}: -${inr(p.discount)}` : "") + `\nTotal: ${inr(p.total)}\n\nName: ${name}` + (body.address ? `\nAddress: ${body.address}` : "");
+      text = "Hello PaperBack Publishers! I would like to order:\n\n" + p.lines.map(l => `${l.qty} x ${l.title} by ${l.author} = ${l.price > 0 ? inr(l.price * l.qty) : "price on request"}`).join("\n") + (p.subtotal > 0 ? `\n\nSubtotal: ${inr(p.subtotal)}` + (p.discount ? `\nCoupon ${p.coupon}: -${inr(p.discount)}` : "") + `\nTotal: ${inr(p.total)}` + (p.quote ? " (plus books on request)" : "") : "\n\nPlease share the price.") + `\n\nName: ${name}` + (body.address ? `\nAddress: ${body.address}` : "");
     }
     const url = `https://wa.me/${wa}?text=${encodeURIComponent(text)}`;
     cart = []; typed = null; save(); badge();
@@ -167,7 +169,7 @@
   fab.hidden = true; badge();
   fetch("/api/get-content", { cache: "no-store" }).then(r => r.ok ? r.json() : null).then(d => {
     const c = d && d.content; if (!c) return;
-    (Array.isArray(c.books) ? c.books : []).forEach(b => { const s = slug(b.title), p = Number(b.price); if (s && p > 0) catalog[s] = { title: String(b.title), author: String(b.author || ""), price: p }; });
+    (Array.isArray(c.books) ? c.books : []).forEach(b => { const s = slug(b.title), p = Number(b.price); if (s) catalog[s] = { title: String(b.title), author: String(b.author || ""), price: p > 0 ? p : 0 }; });
     const today = new Date(Date.now() + 19800000).toISOString().slice(0, 10);
     offers = (Array.isArray(c.coupons) ? c.coupons : []).filter(o => o && o.code && Number(o.value) > 0 && (!o.expires || today <= o.expires)).map(o => ({ code: String(o.code), type: o.type === "flat" ? "flat" : "percent", value: Number(o.value) }));
     const w = (Array.isArray(c.settings) ? c.settings : []).find(x => String(x.label).trim().toLowerCase() === "whatsapp number");
