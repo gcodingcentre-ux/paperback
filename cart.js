@@ -45,7 +45,8 @@
     const t = document.createElement("div"); t.className = "cart-toast"; t.textContent = m; document.body.append(t);
     clearTimeout(toastT); toastT = setTimeout(() => t.remove(), 1800);
   }
-  function badge() { $(".n", fab).textContent = count(); fab.hidden = !(ready && Object.keys(catalog).length); }
+  const onBookPage = !!new URLSearchParams(location.search).get("book");
+  function badge() { $(".n", fab).textContent = count(); fab.hidden = !(ready && Object.keys(catalog).length && (onBookPage || count() > 0)); }
 
   function openCart() { draw(); dr.hidden = false; requestAnimationFrame(() => { ov.classList.add("show"); dr.classList.add("show"); }); const f = $(".cart-x", dr); if (f) f.focus(); }
   function closeCart() { ov.classList.remove("show"); dr.classList.remove("show"); setTimeout(() => { dr.hidden = true; }, 280); fab.focus(); }
@@ -148,13 +149,6 @@
   }
   function inject() {
     if (!ready) return;
-    $$("figure.book").forEach(f => {
-      if ($(".cart-quick", f)) return;
-      const a = $(".book-link", f), m = a && /book=([^&]+)/.exec(a.getAttribute("href") || ""); if (!m) return;
-      const s = decodeURIComponent(m[1]); if (!catalog[s]) return;
-      const b = document.createElement("button"); b.type = "button"; b.className = "cart-quick"; b.dataset.slug = s; b.textContent = "Add to cart";
-      f.append(b);
-    });
     const box = $(".order-box");
     if (box && !$(".cart-row", box)) {
       const s = new URLSearchParams(location.search).get("book");
@@ -167,7 +161,6 @@
       }
     }
   }
-  document.addEventListener("click", e => { const b = e.target.closest(".cart-quick"); if (b) { e.preventDefault(); add(b.dataset.slug, 1); } });
   let t; new MutationObserver(() => { clearTimeout(t); t = setTimeout(inject, 60); }).observe(document.body, { childList: true, subtree: true });
 
   /* ---------- load prices ---------- */
